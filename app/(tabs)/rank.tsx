@@ -1,13 +1,10 @@
-import { View, Text, StyleSheet } from "react-native";
-import { useThemeColor } from "@/hooks/useThemeColor";
+import { StyleSheet, View } from "react-native";
+import SongSwiper from "@/components/SongSwiper";
 
-export default function RankScreen() {
-   const textColor = useThemeColor({}, "text");
-
+export default function RankPage() {
    return (
       <View style={styles.container}>
-         <Text style={[styles.text, { color: textColor }]}>Rank Screen</Text>
-         <Text style={[styles.text, { color: textColor }]}>This is the Rank Screen</Text>
+         <SongSwiper onSwipe={() => {}} onSwipeLeft={() => {}} onSwipeRight={() => {}} />
       </View>
    );
 }
@@ -15,10 +12,6 @@ export default function RankScreen() {
 const styles = StyleSheet.create({
    container: {
       flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-   },
-   text: {
-      fontSize: 18,
+      backgroundColor: "#ffffff",
    },
 });
