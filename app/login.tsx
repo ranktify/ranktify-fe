@@ -23,7 +23,7 @@ const SCREEN_WIDTH = Dimensions.get("window").width;
 const STATUSBAR_HEIGHT = Platform.OS === "ios" ? 20 : StatusBar.currentHeight;
 const NAVBAR_HEIGHT = 56;
 
-const baseURL = Constants.expoConfig?.extra?.baseURL;
+const baseURL = Constants.expoConfig?.extra?.baseURL || "http://localhost:8080";
 
 const LoginScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
    const router = useRouter();
