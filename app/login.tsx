@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import {
    View,
    Text,
@@ -11,17 +11,25 @@ import {
    SafeAreaView,
    StatusBar,
    Dimensions,
+   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { Ionicons } from "@expo/vector-icons";
+import axios from "axios";
+import Constants from "expo-constants";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const STATUSBAR_HEIGHT = Platform.OS === "ios" ? 20 : StatusBar.currentHeight;
 const NAVBAR_HEIGHT = 56;
 
+const baseURL = Constants.expoConfig?.extra?.baseURL;
+
 const LoginScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
    const router = useRouter();
+   const [email, setEmail] = useState("");
+   const [password, setPassword] = useState("");
+   const [isLoading, setIsLoading] = useState(false);
    const textColor = useThemeColor({}, "text");
    const backgroundColor = useThemeColor({}, "background");
    const placeholderColor =
@@ -29,9 +37,32 @@ const LoginScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
 
    const inputTextColor = backgroundColor === "#fff" ? textColor : "#ffffff";
 
-   const handleLoginPress = useCallback(() => {
-      Alert.alert("Login", "Login button pressed");
-   }, []);
+   const handleLoginPress = useCallback(async () => {
+      if (!email || !password) {
+         Alert.alert("Error", "Please enter both email and password");
+         return;
+      }
+
+      setIsLoading(true);
+
+      try {
+         const response = await axios.post(`${baseURL}/ranktify/user/login`, {
+            email,
+            password,
+         });
+
+         console.log("Login successful:", response.data);
+         setIsLoading(false);
+
+         router.replace("/rank");
+      } catch (error) {
+         setIsLoading(false);
+
+         const errorMessage = error.response?.data?.message || "Login failed. Please try again.";
+         console.error("Login error:", error);
+         Alert.alert("Login Failed", errorMessage);
+      }
+   }, [email, password, router]);
 
    const handleSignupPress = useCallback(() => {
       router.push("/signup");
@@ -93,6 +124,8 @@ const LoginScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
                         style={dynamicStyles.input}
                         keyboardType="email-address"
                         autoCapitalize="none"
+                        value={email}
+                        onChangeText={setEmail}
                      />
                   </View>
 
@@ -108,6 +141,8 @@ const LoginScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
                         placeholderTextColor={placeholderColor}
                         style={dynamicStyles.input}
                         secureTextEntry
+                        value={password}
+                        onChangeText={setPassword}
                      />
                   </View>
 
@@ -119,8 +154,13 @@ const LoginScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
                      style={styles.loginButton}
                      onPress={handleLoginPress}
                      activeOpacity={0.8}
+                     disabled={isLoading}
                   >
-                     <Text style={styles.loginButtonText}>LOGIN</Text>
+                     {isLoading ? (
+                        <ActivityIndicator color="white" />
+                     ) : (
+                        <Text style={styles.loginButtonText}>LOGIN</Text>
+                     )}
                   </TouchableOpacity>
                </View>
 
