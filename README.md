@@ -1,50 +1,48 @@
-# Welcome to your Expo app 👋
+# Ranktify Frontend
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## Requirements
 
-## Get started
+Before running the app, ensure you have the following installed:
 
-1. Install dependencies
+-  [Node.js](https://nodejs.org/) (Recommended: Latest LTS version)
+-  A mobile device or emulator (Expo Go app recommended for testing on mobile)
+
+## Get Started
+
+1. Clone the repository:
+
+   ```bash
+   git clone <repository-url>
+   cd ranktify-fe
+   ```
+
+2. Install dependencies:
 
    ```bash
    npm install
    ```
 
-2. Start the app
-
+3. Start the Expo development server:
    ```bash
-    npx expo start
+   npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+## Setup
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+### Local Development
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+To configure the app for local development, add the following to your `app.json` file:
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```json
+"extra": {
+    "baseURL": "http://localhost:8080"
+    }
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+To configure the app to communicate with deployed backend environment, add the following to your `app.json` file:
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```json
+"extra": {
+    "baseURL": "*insert deployed environment link here*"
+    }
+```
