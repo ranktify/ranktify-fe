@@ -18,6 +18,7 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import Constants from "expo-constants";
+import * as SecureStore from "expo-secure-store";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const STATUSBAR_HEIGHT = Platform.OS === "ios" ? 20 : StatusBar.currentHeight;
@@ -37,6 +38,29 @@ const LoginScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
 
    const inputTextColor = backgroundColor === "#fff" ? textColor : "#ffffff";
 
+   const secureStore = {
+     setItem: async (key, value) => {
+       if (Platform.OS === 'web') {
+         localStorage.setItem(key, value);
+         return;
+       }
+       return await SecureStore.setItemAsync(key, value);
+     },
+     getItem: async (key) => {
+       if (Platform.OS === 'web') {
+         return localStorage.getItem(key);
+       }
+       return await SecureStore.getItemAsync(key);
+     },
+     deleteItem: async (key) => {
+       if (Platform.OS === 'web') {
+         localStorage.removeItem(key);
+         return;
+       }
+       return await SecureStore.deleteItemAsync(key);
+     }
+   };
+
    const handleLoginPress = useCallback(async () => {
       if (!email || !password) {
          Alert.alert("Error", "Please enter both email and password");
@@ -52,8 +76,20 @@ const LoginScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
          });
 
          console.log("Login successful:", response.data);
+         
+         await secureStore.setItem('jwt_token', response.data.token);
+         
+         const tokenParts = response.data.token.split('.');
+         if (tokenParts.length === 3) {
+            const payload = JSON.parse(atob(tokenParts[1]));
+            await secureStore.setItem('user_info', JSON.stringify({
+               userId: payload.user_id,
+               email: payload.email,
+               username: payload.username,
+            }));
+         }
+         
          setIsLoading(false);
-
          router.replace("/rank");
       } catch (error) {
          setIsLoading(false);
