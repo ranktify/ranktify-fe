@@ -36,6 +36,9 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "baseURL": "http://localhost:8080"
     }
   }
 }
