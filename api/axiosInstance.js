@@ -73,7 +73,7 @@ axiosInstance.interceptors.request.use(
       if (
          config.url === "/user/login" ||
          config.url === "/user/register" ||
-         config.url === "/user/refresh"
+         config.url === "/api/refresh"
       ) {
          return config;
       }
@@ -119,7 +119,7 @@ axiosInstance.interceptors.response.use(
             if (!refreshToken) {
                throw new Error("No refresh token found");
             }
-            const response = await axios.post(`${baseURL}/ranktify/user/refresh`, {
+            const response = await axios.post(`${baseURL}/ranktify/api/refresh`, {
                refresh_token: refreshToken,
             });
 
