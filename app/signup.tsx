@@ -15,14 +15,10 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useThemeColor } from "@/hooks/useThemeColor";
-import axios from "axios";
-import Constants from "expo-constants";
-import * as SecureStore from "expo-secure-store";
+import { useAuth } from "../contexts/AuthContext";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
-const STATUSBAR_HEIGHT = Platform.OS === "ios" ? 20 : StatusBar.currentHeight;
 const NAVBAR_HEIGHT = 56;
-const baseURL = Constants.expoConfig?.extra?.baseURL || "http://localhost:8080";
 
 const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
    const router = useRouter();
@@ -45,38 +41,22 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
       backgroundColor === "#fff" ? "rgba(100, 100, 100, 0.8)" : "rgba(200, 200, 200, 0.9)";
    const inputTextColor = backgroundColor === "#fff" ? textColor : "#ffffff";
 
-   // SecureStore-like object that uses localStorage on web
-   const secureStore = {
-      setItem: async (key, value) => {
-         if (Platform.OS === "web") {
-            localStorage.setItem(key, value);
-            return;
-         }
-         return await SecureStore.setItemAsync(key, value);
-      },
-      getItem: async (key) => {
-         if (Platform.OS === "web") {
-            return localStorage.getItem(key);
-         }
-         return await SecureStore.getItemAsync(key);
-      },
-      deleteItem: async (key) => {
-         if (Platform.OS === "web") {
-            localStorage.removeItem(key);
-            return;
-         }
-         return await SecureStore.deleteItemAsync(key);
-      },
-   };
+   const { register, isAuthenticated } = useAuth();
+
+   useEffect(() => {
+      if (isAuthenticated) {
+         router.replace("/(tabs)");
+      }
+   }, [isAuthenticated, router]);
 
    useEffect(() => {
       setIsFormValid(
          first_name.trim() !== "" &&
-         last_name.trim() !== "" &&
-         email.trim() !== "" &&
-         username.trim() !== "" &&
-         password.trim() !== "" &&
-         confirmPassword.trim() !== ""
+            last_name.trim() !== "" &&
+            email.trim() !== "" &&
+            username.trim() !== "" &&
+            password.trim() !== "" &&
+            confirmPassword.trim() !== ""
       );
    }, [first_name, last_name, email, username, password, confirmPassword]);
 
@@ -135,7 +115,7 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
       setIsLoading(true);
 
       try {
-         const response = await axios.post(`${baseURL}/ranktify/user/register`, {
+         const result = await register({
             first_name,
             last_name,
             email,
@@ -144,63 +124,25 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
             role,
          });
 
-         console.log("Signup successful:", response.data);
+         setIsLoading(false);
 
-         // If the server returns a token upon successful signup:
-         if (response.data?.token) {
-            const { token } = response.data;
-
-            // Store token in secureStore
-            await secureStore.setItem("jwt_token", token);
-
-            // Parse token to store user info (assuming your token has user_id, email, username)
-            const tokenParts = token.split(".");
-            if (tokenParts.length === 3) {
-               const payload = JSON.parse(atob(tokenParts[1]));
-               await secureStore.setItem(
-                  "user_info",
-                  JSON.stringify({
-                     userId: payload.user_id,
-                     email: payload.email,
-                     username: payload.username,
-                  })
-               );
+         if (result.success) {
+            if (result.requireLogin) {
+               Alert.alert("Success", "Account created. Please login.");
+               router.replace("/login");
+            } else {
+               Alert.alert("Success", "Account created successfully!");
+               router.replace("/(tabs)/rank");
             }
-
-            setIsLoading(false);
-            Alert.alert("Success", "Account created successfully!");
-            // Navigate to rank screen (or wherever you want after signup)
-            router.replace("/rank");
          } else {
-            // If no token was returned, prompt the user to log in
-            setIsLoading(false);
-            Alert.alert("Success", "Account created. Please login.");
-            router.replace("/login");
+            Alert.alert("Signup Failed", result.error);
          }
       } catch (error) {
          setIsLoading(false);
-         let errorMessage = "Signup failed. Please try again.";
-         if (error.response) {
-            if (error.response.status === 403) {
-               errorMessage = "Username or Email is already taken.";
-            } else {
-               errorMessage = error.response.data?.message || errorMessage;
-            }
-         }
          console.error("Signup error:", error);
-         Alert.alert("Signup Failed", errorMessage);
+         Alert.alert("Signup Failed", "An unexpected error occurred. Please try again.");
       }
-   }, [
-      first_name,
-      last_name,
-      email,
-      username,
-      password,
-      confirmPassword,
-      role,
-      router,
-      secureStore,
-   ]);
+   }, [first_name, last_name, email, username, password, confirmPassword, role, register, router]);
 
    // Dynamic styles for light/dark mode
    const dynamicStyles = {
@@ -218,6 +160,7 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
          color: textColor,
       },
       inputHalfWidth: {
+         ...styles.inputContainer,
          ...styles.inputHalfWidth,
          color: inputTextColor,
          backgroundColor: backgroundColor === "#fff" ? "white" : "#333333",
@@ -231,9 +174,7 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
 
    return (
       <SafeAreaView style={dynamicStyles.safeArea}>
-         <StatusBar
-            barStyle={backgroundColor === "#fff" ? "dark-content" : "light-content"}
-         />
+         <StatusBar barStyle={backgroundColor === "#fff" ? "dark-content" : "light-content"} />
          <KeyboardAvoidingView
             style={styles.container}
             behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -289,8 +230,8 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
                      onChangeText={setPassword}
                   />
                   <Text style={styles.passwordHint}>
-                     Password must be 8-32 characters long, include at least one uppercase
-                     letter, one number, and one special character.
+                     Password must be 8-32 characters long, include at least one uppercase letter,
+                     one number, and one special character.
                   </Text>
 
                   <TextInput
@@ -303,10 +244,7 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
                   />
 
                   <TouchableOpacity
-                     style={[
-                        styles.signupButton,
-                        { opacity: isFormValid ? 1 : 0.5 },
-                     ]}
+                     style={[styles.signupButton, { opacity: isFormValid ? 1 : 0.5 }]}
                      onPress={handleSignupPress}
                      activeOpacity={isFormValid ? 0.8 : 1}
                      disabled={isLoading || !isFormValid}
@@ -386,6 +324,10 @@ const styles = StyleSheet.create({
       justifyContent: "center",
       alignItems: "center",
       elevation: 3,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
    },
    signupButtonText: {
       color: "white",
@@ -394,9 +336,9 @@ const styles = StyleSheet.create({
    },
    passwordHint: {
       fontSize: 12,
-      color: "rgba(200, 200, 200, 0.8)",
-      marginTop: -10, // Moves the hint closer to the password input
-      marginBottom: 10, // Adds space before the confirm password input
+      color: "rgba(150, 150, 150, 0.8)",
+      marginTop: -10,
+      marginBottom: 10,
       marginLeft: 5,
    },
 });

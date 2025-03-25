@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import {
    View,
    Text,
@@ -16,15 +16,10 @@ import {
 import { useRouter } from "expo-router";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { Ionicons } from "@expo/vector-icons";
-import axios from "axios";
-import Constants from "expo-constants";
-import * as SecureStore from "expo-secure-store";
+import { useAuth } from "@/contexts/AuthContext";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
-const STATUSBAR_HEIGHT = Platform.OS === "ios" ? 20 : StatusBar.currentHeight;
 const NAVBAR_HEIGHT = 56;
-
-const baseURL = Constants.expoConfig?.extra?.baseURL || "http://localhost:8080";
 
 const LoginScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
    const router = useRouter();
@@ -37,29 +32,13 @@ const LoginScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
       backgroundColor === "#fff" ? "rgba(100, 100, 100, 0.8)" : "rgba(200, 200, 200, 0.9)";
 
    const inputTextColor = backgroundColor === "#fff" ? textColor : "#ffffff";
+   const { login, isAuthenticated } = useAuth();
 
-   const secureStore = {
-     setItem: async (key, value) => {
-       if (Platform.OS === 'web') {
-         localStorage.setItem(key, value);
-         return;
-       }
-       return await SecureStore.setItemAsync(key, value);
-     },
-     getItem: async (key) => {
-       if (Platform.OS === 'web') {
-         return localStorage.getItem(key);
-       }
-       return await SecureStore.getItemAsync(key);
-     },
-     deleteItem: async (key) => {
-       if (Platform.OS === 'web') {
-         localStorage.removeItem(key);
-         return;
-       }
-       return await SecureStore.deleteItemAsync(key);
-     }
-   };
+   useEffect(() => {
+      if (isAuthenticated) {
+         router.replace("/(tabs)");
+      }
+   }, [isAuthenticated, router]);
 
    const handleLoginPress = useCallback(async () => {
       if (!email || !password) {
@@ -70,35 +49,20 @@ const LoginScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
       setIsLoading(true);
 
       try {
-         const response = await axios.post(`${baseURL}/ranktify/user/login`, {
-            email,
-            password,
-         });
+         const result = await login({ email, password });
 
-         console.log("Login successful:", response.data);
-         
-         await secureStore.setItem('jwt_token', response.data.token);
-         
-         const tokenParts = response.data.token.split('.');
-         if (tokenParts.length === 3) {
-            const payload = JSON.parse(atob(tokenParts[1]));
-            await secureStore.setItem('user_info', JSON.stringify({
-               userId: payload.user_id,
-               email: payload.email,
-               username: payload.username,
-            }));
+         if (result.success) {
+            router.replace("/(tabs)/rank");
+         } else {
+            Alert.alert("Login Failed", result.error);
          }
-         
-         setIsLoading(false);
-         router.replace("/rank");
       } catch (error) {
-         setIsLoading(false);
-
-         const errorMessage = error.response?.data?.message || "Login failed. Please try again.";
          console.error("Login error:", error);
-         Alert.alert("Login Failed", errorMessage);
+         Alert.alert("Login Failed", "An unexpected error occurred. Please try again.");
+      } finally {
+         setIsLoading(false);
       }
-   }, [email, password, router]);
+   }, [email, password, login, router]);
 
    const handleSignupPress = useCallback(() => {
       router.push("/signup");

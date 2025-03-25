@@ -1,79 +1,32 @@
-import { View, Text, StyleSheet, Platform, TouchableOpacity, Image, ScrollView, Button } from "react-native";
+import {
+   View,
+   Text,
+   StyleSheet,
+   Platform,
+   TouchableOpacity,
+   ScrollView,
+   Button,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { useThemeColor } from "@/hooks/useThemeColor";
-import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
-import { Ionicons } from "@expo/vector-icons";
-
-const secureStore = {
-  getItem: async (key) => {
-    if (Platform.OS === 'web') {
-      return localStorage.getItem(key);
-    }
-    return await SecureStore.getItemAsync(key);
-  },
-  deleteItem: async (key) => {
-    if (Platform.OS === 'web') {
-      localStorage.removeItem(key);
-      return;
-    }
-    return await SecureStore.deleteItemAsync(key);
-  }
-};
-
+import { useAuth } from "../../contexts/AuthContext";
 export default function ProfileScreen() {
    const router = useRouter();
    const textColor = useThemeColor({}, "text");
    const backgroundColor = useThemeColor({}, "background");
-   const [userInfo, setUserInfo] = useState(null);
-   const [isLoading, setIsLoading] = useState(true);
 
-   useEffect(() => {
-      const checkAuthStatus = async () => {
-         try {
-            setIsLoading(true);
-            const token = await secureStore.getItem('jwt_token');
-            const storedInfo = await secureStore.getItem('user_info');
-            
-            if (token && storedInfo) {
-               const tokenParts = token.split('.');
-               if (tokenParts.length === 3) {
-                  const payload = JSON.parse(atob(tokenParts[1]));
-                  const expiration = payload.exp * 1000;
-                  
-                  if (expiration > Date.now()) {
-                     setUserInfo(JSON.parse(storedInfo));
-                  } else {
-                     await secureStore.deleteItem('jwt_token');
-                     await secureStore.deleteItem('user_info');
-                     setUserInfo(null);
-                  }
-               }
-            } else {
-               setUserInfo(null);
-            }
-         } catch (error) {
-            console.error("Error checking auth status:", error);
-            setUserInfo(null);
-         } finally {
-            setIsLoading(false);
-         }
-      };
-
-      checkAuthStatus();
-   }, []);
+   const { user, loading, logout, isAuthenticated } = useAuth();
 
    const handleLogout = async () => {
       try {
-         await secureStore.deleteItem('jwt_token');
-         await secureStore.deleteItem('user_info');
-         setUserInfo(null);
+         await logout();
       } catch (error) {
          console.error("Logout error:", error);
       }
    };
 
-   if (isLoading) {
+   if (loading) {
       return (
          <View style={[styles.loadingContainer, { backgroundColor }]}>
             <Text style={[styles.loadingText, { color: textColor }]}>Loading...</Text>
@@ -81,18 +34,28 @@ export default function ProfileScreen() {
       );
    }
 
-   if (!userInfo) {
+   if (!isAuthenticated || !user) {
       return (
          <View style={[styles.container, { backgroundColor }]}>
             <View style={styles.welcomeContainer}>
                <Text style={[styles.title, { color: textColor }]}>Welcome to Ranktify</Text>
-               <Text style={[styles.text, { color: textColor, marginBottom: 30 }]}>Please log in or sign up to continue</Text>
-               
+               <Text style={[styles.text, { color: textColor, marginBottom: 30 }]}>
+                  Please log in or sign up to continue
+               </Text>
+
                <View style={styles.buttonContainer}>
-                  <Button title="Go to Login" onPress={() => router.push("/login")} color="#6200ee" />
+                  <Button
+                     title="Go to Login"
+                     onPress={() => router.push("/login")}
+                     color="#6200ee"
+                  />
                </View>
                <View style={styles.buttonContainer}>
-                  <Button title="Go to Signup" onPress={() => router.push("/signup")} color="#03DAC6" />
+                  <Button
+                     title="Go to Signup"
+                     onPress={() => router.push("/signup")}
+                     color="#03DAC6"
+                  />
                </View>
             </View>
          </View>
@@ -100,8 +63,8 @@ export default function ProfileScreen() {
    }
 
    const getInitials = () => {
-      if (!userInfo || !userInfo.username) return "?";
-      return userInfo.username.charAt(0).toUpperCase();
+      if (!user || !user.username) return "?";
+      return user.username.charAt(0).toUpperCase();
    };
 
    return (
@@ -113,59 +76,88 @@ export default function ProfileScreen() {
                      <Text style={styles.avatarText}>{getInitials()}</Text>
                   </View>
                </View>
-               
+
                <View style={styles.statsContainer}>
                   <View style={styles.statItem}>
                      <Text style={[styles.statNumber, { color: textColor }]}>0</Text>
-                     <Text style={[styles.statLabel, { color: backgroundColor === "#fff" ? "#999" : "#aaa" }]}>Ranked</Text>
+                     <Text
+                        style={[
+                           styles.statLabel,
+                           { color: backgroundColor === "#fff" ? "#999" : "#aaa" },
+                        ]}
+                     >
+                        Ranked
+                     </Text>
                   </View>
-                  
+
                   <View style={styles.statItem}>
                      <Text style={[styles.statNumber, { color: textColor }]}>0</Text>
-                     <Text style={[styles.statLabel, { color: backgroundColor === "#fff" ? "#999" : "#aaa" }]}>Lists</Text>
+                     <Text
+                        style={[
+                           styles.statLabel,
+                           { color: backgroundColor === "#fff" ? "#999" : "#aaa" },
+                        ]}
+                     >
+                        Lists
+                     </Text>
                   </View>
-                  
+
                   <View style={styles.statItem}>
                      <Text style={[styles.statNumber, { color: textColor }]}>0</Text>
-                     <Text style={[styles.statLabel, { color: backgroundColor === "#fff" ? "#999" : "#aaa" }]}>Shared</Text>
+                     <Text
+                        style={[
+                           styles.statLabel,
+                           { color: backgroundColor === "#fff" ? "#999" : "#aaa" },
+                        ]}
+                     >
+                        Shared
+                     </Text>
                   </View>
                </View>
             </View>
-            
+
             <View style={styles.profileContainer}>
                <Text style={[styles.label, { color: textColor }]}>Username</Text>
-               <Text style={[styles.info, { color: textColor }]}>{userInfo.username}</Text>
-               
+               <Text style={[styles.info, { color: textColor }]}>{user.username}</Text>
+
                <Text style={[styles.label, { color: textColor }]}>Email</Text>
-               <Text style={[styles.info, { color: textColor }]}>{userInfo.email}</Text>
-               
+               <Text style={[styles.info, { color: textColor }]}>{user.email}</Text>
+
                <Text style={[styles.label, { color: textColor }]}>User ID</Text>
-               <Text style={[styles.info, { color: textColor }]}>{userInfo.userId}</Text>
+               <Text style={[styles.info, { color: textColor }]}>{user.userId}</Text>
             </View>
          </View>
-         
-         <View style={[styles.contentSection, { borderTopColor: backgroundColor === "#fff" ? "#DBDBDB" : "#444" }]}>
-            <View style={[styles.sectionHeader, { borderBottomColor: backgroundColor === "#fff" ? "#DBDBDB" : "#444" }]}>
+
+         <View
+            style={[
+               styles.contentSection,
+               { borderTopColor: backgroundColor === "#fff" ? "#DBDBDB" : "#444" },
+            ]}
+         >
+            <View
+               style={[
+                  styles.sectionHeader,
+                  { borderBottomColor: backgroundColor === "#fff" ? "#DBDBDB" : "#444" },
+               ]}
+            >
                <Text style={[styles.sectionTitle, { color: textColor }]}>Your Rankings</Text>
             </View>
-            
+
             <View style={styles.emptyContent}>
-               <Text style={[styles.text, { color: textColor }]}>You haven't ranked any songs yet.</Text>
-               <TouchableOpacity 
+               <Text style={[styles.text, { color: textColor }]}>
+                  You haven't ranked any songs yet.
+               </Text>
+               <TouchableOpacity
                   style={styles.rankButton}
-                  onPress={() => router.push("/rank")}
+                  onPress={() => router.push("/(tabs)/rank")}
                >
                   <Text style={styles.rankButtonText}>Start Ranking</Text>
                </TouchableOpacity>
             </View>
          </View>
-         
+
          <View style={styles.buttonContainer}>
-            <Button 
-               title="Logout" 
-               onPress={handleLogout} 
-               color="#6200ee" 
-            />
+            <Button title="Logout" onPress={handleLogout} color="#6200ee" />
          </View>
       </ScrollView>
    );
@@ -291,5 +283,5 @@ const styles = StyleSheet.create({
       color: "#fff",
       fontWeight: "bold",
       fontSize: 16,
-   }
+   },
 });
