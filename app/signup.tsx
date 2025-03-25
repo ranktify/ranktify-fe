@@ -15,7 +15,8 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useThemeColor } from "@/hooks/useThemeColor";
-import { useAuth } from "../contexts/AuthContext";
+import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "@/contexts/AuthContext";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const NAVBAR_HEIGHT = 56;
@@ -144,6 +145,11 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
       }
    }, [first_name, last_name, email, username, password, confirmPassword, role, register, router]);
 
+   // Login page navigation
+   const handleLoginPress = useCallback(() => {
+      router.push("/login");
+   }, [router]);
+
    // Dynamic styles for light/dark mode
    const dynamicStyles = {
       safeArea: {
@@ -159,15 +165,21 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
          ...styles.subtitle,
          color: textColor,
       },
-      inputHalfWidth: {
-         ...styles.inputContainer,
-         ...styles.inputHalfWidth,
+      input: {
+         ...styles.input,
          color: inputTextColor,
-         backgroundColor: backgroundColor === "#fff" ? "white" : "#333333",
+      },
+      loginText: {
+         ...styles.loginText,
+         color: textColor,
       },
       inputContainer: {
          ...styles.inputContainer,
-         color: inputTextColor,
+         backgroundColor: backgroundColor === "#fff" ? "white" : "#333333",
+      },
+      halfInputContainer: {
+         ...styles.inputContainer,
+         ...styles.halfInputContainer,
          backgroundColor: backgroundColor === "#fff" ? "white" : "#333333",
       },
    };
@@ -187,61 +199,109 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
 
                <View style={styles.formContainer}>
                   <View style={styles.rowContainer}>
-                     <TextInput
-                        placeholder="First Name"
-                        placeholderTextColor={placeholderColor}
-                        style={dynamicStyles.inputHalfWidth}
-                        value={first_name}
-                        onChangeText={setfirst_name}
+                     <View style={dynamicStyles.halfInputContainer}>
+                        <Ionicons
+                           name="person-outline"
+                           size={24}
+                           color="#6200ee"
+                           style={styles.inputIcon}
+                        />
+                        <TextInput
+                           placeholder="First Name"
+                           placeholderTextColor={placeholderColor}
+                           style={dynamicStyles.input}
+                           value={first_name}
+                           onChangeText={setfirst_name}
+                        />
+                     </View>
+                     <View style={dynamicStyles.halfInputContainer}>
+                        <Ionicons
+                           name="person-outline"
+                           size={24}
+                           color="#6200ee"
+                           style={styles.inputIcon}
+                        />
+                        <TextInput
+                           placeholder="Last Name"
+                           placeholderTextColor={placeholderColor}
+                           style={dynamicStyles.input}
+                           value={last_name}
+                           onChangeText={setlast_name}
+                        />
+                     </View>
+                  </View>
+
+                  <View style={dynamicStyles.inputContainer}>
+                     <Ionicons
+                        name="mail-outline"
+                        size={24}
+                        color="#6200ee"
+                        style={styles.inputIcon}
                      />
                      <TextInput
-                        placeholder="Last Name"
+                        placeholder="Email"
                         placeholderTextColor={placeholderColor}
-                        style={dynamicStyles.inputHalfWidth}
-                        value={last_name}
-                        onChangeText={setlast_name}
+                        style={dynamicStyles.input}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        value={email}
+                        onChangeText={setEmail}
                      />
                   </View>
 
-                  <TextInput
-                     placeholder="Email"
-                     placeholderTextColor={placeholderColor}
-                     style={dynamicStyles.inputContainer}
-                     keyboardType="email-address"
-                     autoCapitalize="none"
-                     value={email}
-                     onChangeText={setEmail}
-                  />
+                  <View style={dynamicStyles.inputContainer}>
+                     <Ionicons
+                        name="at-outline"
+                        size={24}
+                        color="#6200ee"
+                        style={styles.inputIcon}
+                     />
+                     <TextInput
+                        placeholder="Username"
+                        placeholderTextColor={placeholderColor}
+                        style={dynamicStyles.input}
+                        value={username}
+                        onChangeText={setUsername}
+                     />
+                  </View>
 
-                  <TextInput
-                     placeholder="Username"
-                     placeholderTextColor={placeholderColor}
-                     style={dynamicStyles.inputContainer}
-                     value={username}
-                     onChangeText={setUsername}
-                  />
-
-                  <TextInput
-                     placeholder="Password"
-                     placeholderTextColor={placeholderColor}
-                     style={dynamicStyles.inputContainer}
-                     secureTextEntry
-                     value={password}
-                     onChangeText={setPassword}
-                  />
+                  <View style={dynamicStyles.inputContainer}>
+                     <Ionicons
+                        name="lock-closed-outline"
+                        size={24}
+                        color="#6200ee"
+                        style={styles.inputIcon}
+                     />
+                     <TextInput
+                        placeholder="Password"
+                        placeholderTextColor={placeholderColor}
+                        style={dynamicStyles.input}
+                        secureTextEntry
+                        value={password}
+                        onChangeText={setPassword}
+                     />
+                  </View>
                   <Text style={styles.passwordHint}>
                      Password must be 8-32 characters long, include at least one uppercase letter,
                      one number, and one special character.
                   </Text>
 
-                  <TextInput
-                     placeholder="Confirm Password"
-                     placeholderTextColor={placeholderColor}
-                     style={dynamicStyles.inputContainer}
-                     secureTextEntry
-                     value={confirmPassword}
-                     onChangeText={setConfirmPassword}
-                  />
+                  <View style={dynamicStyles.inputContainer}>
+                     <Ionicons
+                        name="lock-closed-outline"
+                        size={24}
+                        color="#6200ee"
+                        style={styles.inputIcon}
+                     />
+                     <TextInput
+                        placeholder="Confirm Password"
+                        placeholderTextColor={placeholderColor}
+                        style={dynamicStyles.input}
+                        secureTextEntry
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
+                     />
+                  </View>
 
                   <TouchableOpacity
                      style={[styles.signupButton, { opacity: isFormValid ? 1 : 0.5 }]}
@@ -256,6 +316,12 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
                      )}
                   </TouchableOpacity>
                </View>
+
+               <TouchableOpacity style={styles.loginContainer} onPress={handleLoginPress}>
+                  <Text style={dynamicStyles.loginText}>
+                     Already have an account? <Text style={styles.loginLink}>Login</Text>
+                  </Text>
+               </TouchableOpacity>
             </View>
          </KeyboardAvoidingView>
       </SafeAreaView>
@@ -308,14 +374,16 @@ const styles = StyleSheet.create({
       shadowOpacity: 0.2,
       shadowRadius: 1.41,
    },
-   inputHalfWidth: {
+   halfInputContainer: {
+      flex: 1,
+   },
+   inputIcon: {
+      marginRight: 12,
+   },
+   input: {
       flex: 1,
       height: 56,
       fontSize: 16,
-      backgroundColor: "#333",
-      borderRadius: 8,
-      paddingHorizontal: 16,
-      marginBottom: 16,
    },
    signupButton: {
       backgroundColor: "#6200ee",
@@ -340,6 +408,17 @@ const styles = StyleSheet.create({
       marginTop: -10,
       marginBottom: 10,
       marginLeft: 5,
+   },
+   loginContainer: {
+      marginTop: 20,
+      alignItems: "center",
+   },
+   loginText: {
+      fontSize: 14,
+   },
+   loginLink: {
+      color: "#6200ee",
+      fontWeight: "bold",
    },
 });
 
