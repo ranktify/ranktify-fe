@@ -39,7 +39,12 @@
       "typedRoutes": true
     },
     "extra": {
-      "baseURL": "http://localhost:8080"
+      "baseURL": "http://localhost:8080",
+      "spotify": {
+        "clientId": "INSERT_CLIENT_ID",
+        "clientSecret": "INSERT_CLIENT_SECRET",
+        "redirectUri": "exp://127.0.0.1:19000/" // Add this redirectUri to your Spotify Developer Dashboard Application
+      }
     }
   }
 }
