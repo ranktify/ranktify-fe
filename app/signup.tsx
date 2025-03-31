@@ -73,7 +73,7 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
    };
 
    const validateUsername = (username) => {
-      const usernameRegex = /^[a-zA-Z0-9_]+$/;
+      const usernameRegex = /^(?!-)[a-zA-Z0-9-]{1,39}(?<!-)$/;
       return usernameRegex.test(username);
    };
 
