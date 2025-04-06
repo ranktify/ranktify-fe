@@ -16,6 +16,7 @@ import {
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
+import { searchAndGetLinks } from "../utils/spotifySearch"; // Import spotifySearch
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SWIPE_THRESHOLD = 0.25 * SCREEN_WIDTH;
@@ -27,55 +28,54 @@ const NAVBAR_HEIGHT = 56;
 const SongSwiper = ({ navbarHeight = NAVBAR_HEIGHT }) => {
    const [songs, setSongs] = useState([
       {
-         id: "1",
-         title: "Blinding Lights",
-         artist: "The Weeknd",
-         album: "After Hours",
-         year: "2020",
-         imageUri:
-            "https://upload.wikimedia.org/wikipedia/en/e/e6/The_Weeknd_-_Blinding_Lights.png",
-         genre: "Pop",
-         audioUri: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+         id: "0",
+         title: "Otro Atardecer",
+         artist: "Bad Bunny, The Marías",
+         album: "",
+         year: "2025",
+         imageUri: "",
+         genre: "",
+         audioUri: "",
       },
       {
          id: "2",
-         title: "Dance Monkey",
-         artist: "Tones and I",
-         album: "The Kids Are Coming",
-         year: "2019",
-         imageUri: "https://i.scdn.co/image/ab67616d0000b27338802659d156935ada63c9e3",
-         genre: "Pop",
-         audioUri: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+         title: "PARANORMAL",
+         artist: "Tainy, Alvaro Diaz",
+         album: "",
+         year: "2025",
+         imageUri: "",
+         genre: "",
+         audioUri: "",
       },
       {
          id: "3",
-         title: "Bohemian Rhapsody",
-         artist: "Queen",
-         album: "A Night at the Opera",
-         year: "1975",
-         imageUri: "https://i.scdn.co/image/ab67616d0000b27328581cfe196c266c132a9d62",
-         genre: "Rock",
-         audioUri: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+         title: "DtMF",
+         artist: "Bad Bunny",
+         album: "",
+         year: "2025",
+         imageUri: "",
+         genre: "",
+         audioUri: "",
       },
       {
          id: "4",
-         title: "Sicko Mode",
-         artist: "Travis Scott",
-         album: "Astroworld",
-         year: "2018",
-         imageUri: "https://i.scdn.co/image/ab67616d00001e02072e9faef2ef7b6db63834a3",
-         genre: "Hip Hop",
-         audioUri: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+         title: "MONACO",
+         artist: "Bad Bunny",
+         album: "",
+         year: "2025",
+         imageUri: "",
+         genre: "",
+         audioUri: "",
       },
       {
          id: "5",
-         title: "Bad Guy",
-         artist: "Billie Eilish",
-         album: "When We All Fall Asleep, Where Do We Go?",
-         year: "2019",
-         imageUri: "https://i.scdn.co/image/ab67616d0000b27350a3147b4edd7701a876c6ce",
-         genre: "Pop",
-         audioUri: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+         title: "NUEVAYoL",
+         artist: "Bad Bunny",
+         album: "",
+         year: "2025",
+         imageUri: "",
+         genre: "",
+         audioUri: "",
       },
    ]);
 
@@ -89,6 +89,31 @@ const SongSwiper = ({ navbarHeight = NAVBAR_HEIGHT }) => {
    const [isLoading, setIsLoading] = useState(false);
 
    const [displaySong, setDisplaySong] = useState(songs[0]);
+
+   useEffect(() => {
+      const fetchSongDetails = async () => {
+         const updatedSongs = await Promise.all(
+            songs.map(async (song) => {
+               if (song.audioUri && song.imageUri && song.album) return song; // Skip if details exist
+
+               const searchResult = await searchAndGetLinks(song.title);
+               if (searchResult.success && searchResult.results.length > 0) {
+                  const track = searchResult.results[0];
+                  return {
+                     ...song,
+                     audioUri: track.audioUri || song.audioUri,
+                     imageUri: track.image || song.imageUri,
+                     album: track.album || song.album,
+                  };
+               }
+               return song;
+            })
+         );
+         setSongs(updatedSongs);
+      };
+
+      fetchSongDetails();
+   }, []); // Fetch details on component mount
 
    useEffect(() => {
       if (currentIndex < songs.length) {

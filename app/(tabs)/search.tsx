@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
    View,
    Text,
@@ -12,96 +12,114 @@ import {
    Alert,
    Linking,
    StyleSheet,
-   AccessibilityInfo,
    Animated,
    Dimensions,
+   ActivityIndicator,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as WebBrowser from "expo-web-browser";
-import { useSpotifyAuth } from "../../utils/spotifyAuth";
+import { getSpotifyToken } from "@/utils/spotifyAuth";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import * as Haptics from "expo-haptics";
+import { Audio } from "expo-av";
+import { Ionicons } from "@expo/vector-icons";
+import { searchAndGetLinks } from "@/utils/spotifySearch";
+import SpotifyIcon from "@/assets/images/spotify-icon.png";
 
 const statusBarHeight = Platform.OS === "ios" ? 50 : StatusBar.currentHeight || 0;
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SEARCH_TYPES = ["track", "album", "artist"];
+const SPOTIFY_ICON = SpotifyIcon;
 
-const SPOTIFY_ICON =
-   "https://storage.googleapis.com/pr-newsroom-wp/1/2023/05/Spotify_Primary_Logo_RGB_Green.png";
+const SpotifyAPI = {
+   search: "https://api.spotify.com/v1/search",
+   openWeb: (type, id) => `https://open.spotify.com/${type}/${id}`,
+   openApp: (type, id) => `spotify:${type}:${id}`,
+};
 
 export default function SearchScreen() {
    const [query, setQuery] = useState("");
-   const [results, setResults] = useState([]);
+   const [results, setResults] = useState<any[]>([]);
    const [loading, setLoading] = useState(false);
-   const [token, setToken] = useState(null);
    const [searchType, setSearchType] = useState("track");
    const [fadeAnim] = useState(new Animated.Value(1));
+   const [sound, setSound] = useState<Audio.Sound | null>(null);
+   const [currentlyPlayingId, setCurrentlyPlayingId] = useState(null);
+   const [isPlaying, setIsPlaying] = useState(false);
+   const [isLoading, setIsLoading] = useState(false);
 
    const textColor = useThemeColor({}, "text");
    const backgroundColor = useThemeColor({}, "background");
    const titleColor = useThemeColor({}, "text");
 
-   const {
-      login: loginSpotify,
-      hasSpotifyToken,
-      isAuthenticating,
-   } = useSpotifyAuth((newToken) => {
-      setToken(newToken);
-   });
-
-   const handleSpotifyConnect = async () => {
-      await loginSpotify();
-   };
-
    const executeQuery = async () => {
-      if (!token) {
-         Alert.alert("Error", "You need to connect to Spotify first");
-         return;
-      }
-
       if (!query) {
          Alert.alert("Input Needed", "Please enter a search query.");
          return;
       }
 
       setLoading(true);
+
       try {
-         const params = new URLSearchParams({
-            q: query,
-            type: searchType,
-            limit: "20",
-            market: "US",
-         });
-
-         const url = `https://api.spotify.com/v1/search?${params}`;
-
-         const response = await fetch(url, {
-            headers: {
-               Authorization: `Bearer ${token}`,
-            },
-         });
-
-         if (!response.ok) {
-            if (response.status === 429) {
-               const retryAfter = response.headers.get("Retry-After");
-               Alert.alert("Rate Limit", `Try again after ${retryAfter} seconds`);
-            }
-            throw new Error("Spotify API request failed");
+         const token = await getSpotifyToken();
+         if (!token) {
+            Alert.alert(
+               "Authentication Required",
+               "Please connect your Spotify account in the Profile tab"
+            );
+            return;
          }
 
-         const data = await response.json();
-         const items = data[`${searchType}s`]?.items || [];
-         setResults(items);
+         if (searchType === "track") {
+            const result = await searchAndGetLinks(query);
+            if (result.success) {
+               setResults(result.results);
+            } else {
+               Alert.alert("Error", result.error || "Failed to search Spotify");
+            }
+         } else {
+            const params = new URLSearchParams({
+               q: query,
+               type: searchType,
+               limit: "20",
+               market: "US",
+            });
+
+            const response = await fetch(`${SpotifyAPI.search}?${params}`, {
+               headers: {
+                  Authorization: `Bearer ${token}`,
+               },
+            });
+
+            if (response.status === 401) {
+               Alert.alert(
+                  "Session Expired",
+                  "Your Spotify session has expired. Please reconnect in the Profile tab."
+               );
+               return;
+            }
+
+            if (!response.ok) {
+               if (response.status === 429) {
+                  const retryAfter = response.headers.get("Retry-After");
+                  Alert.alert("Rate Limit", `Try again after ${retryAfter} seconds`);
+               }
+               throw new Error("Spotify API request failed");
+            }
+
+            const data = await response.json();
+            setResults(data[`${searchType}s`]?.items || []);
+         }
       } catch (error) {
-         Alert.alert("Error", error.message);
+         console.error("Search error:", error);
+         Alert.alert("Error", "Failed to search Spotify. Please try again.");
       } finally {
          setLoading(false);
       }
    };
 
    const openSpotifyLink = async (type, id) => {
-      const spotifyUri = `spotify:${type}:${id}`;
-      const webUrl = `https://open.spotify.com/${type}/${id}`;
+      const spotifyUri = SpotifyAPI.openApp(type, id);
+      const webUrl = SpotifyAPI.openWeb(type, id);
 
       try {
          const canOpenApp = await Linking.canOpenURL(spotifyUri);
@@ -125,14 +143,100 @@ export default function SearchScreen() {
          ]).start();
          setSearchType(type);
          setResults([]);
+         stopSound();
       }
    };
 
+   const onPlaybackStatusUpdate = (status) => {
+      if (status.isLoaded) {
+         setIsPlaying(status.isPlaying);
+         if (status.didJustFinish) {
+            setIsPlaying(false);
+            setCurrentlyPlayingId(null);
+         }
+      } else {
+         if (status.error) {
+            console.error(`AUDIO ERROR: ${status.error}`);
+         }
+      }
+   };
+
+   const stopSound = async () => {
+      try {
+         if (sound) {
+            await sound.stopAsync();
+            await sound.unloadAsync();
+            setSound(null);
+            setIsPlaying(false);
+            setCurrentlyPlayingId(null);
+         }
+      } catch (error) {
+         console.error("Error stopping sound:", error);
+      }
+   };
+
+   const handlePlayPreview = async (item) => {
+      try {
+         if (isLoading) return;
+         setIsLoading(true);
+
+         const previewUrl = item.previewUrl || item.preview_url;
+         if (!previewUrl) {
+            throw new Error("No preview URL available");
+         }
+
+         if (currentlyPlayingId === item.id) {
+            if (sound && isPlaying) {
+               await sound.pauseAsync();
+               setIsPlaying(false);
+            } else if (sound) {
+               await sound.playAsync();
+               setIsPlaying(true);
+            }
+            setIsLoading(false);
+            return;
+         }
+
+         if (sound) {
+            await sound.unloadAsync();
+            setSound(null);
+         }
+
+         const { sound: newSound } = await Audio.Sound.createAsync(
+            { uri: previewUrl },
+            { shouldPlay: true },
+            onPlaybackStatusUpdate
+         );
+
+         setSound(newSound);
+         setCurrentlyPlayingId(item.id);
+         setIsPlaying(true);
+         await newSound.playAsync();
+
+         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch (error) {
+         console.error("Preview error:", error);
+         Alert.alert("Error", "Could not play preview");
+      } finally {
+         setIsLoading(false);
+      }
+   };
+
+   useEffect(() => {
+      return () => {
+         stopSound();
+      };
+   }, []);
+
    const renderResultItem = ({ item }) => {
       const id = item.id;
-      const image = item.images?.[0]?.url || item.album?.images?.[0]?.url;
+      const image = item.image || item.images?.[0]?.url || item.album?.images?.[0]?.url;
       const title = item.name || item.title;
-      const subtitle = item.artists ? item.artists.map((a) => a.name).join(", ") : item.label || "";
+      const subtitle =
+         item.artists ||
+         (item.artists ? item.artists.map((a) => a.name).join(", ") : item.label || "");
+      const previewUrl = item.previewUrl || item.preview_url;
+      const isCurrentlyPlaying = currentlyPlayingId === id;
 
       return (
          <View style={styles.card}>
@@ -140,14 +244,60 @@ export default function SearchScreen() {
             <View style={styles.cardTextContainer}>
                <Text style={styles.cardTitle}>{title}</Text>
                <Text style={styles.cardSubtitle}>{subtitle}</Text>
+               {searchType === "track" && (
+                  <View style={styles.buttonRow}>
+                     {previewUrl ? (
+                        <TouchableOpacity
+                           style={[
+                              styles.button,
+                              { backgroundColor: "#4CAF50", marginTop: 6, flex: 1, marginRight: 8 },
+                           ]}
+                           onPress={() => handlePlayPreview(item)}
+                           disabled={isLoading}
+                        >
+                           {isLoading && currentlyPlayingId === item.id ? (
+                              <ActivityIndicator color="white" size="small" />
+                           ) : isCurrentlyPlaying && isPlaying ? (
+                              <Ionicons name="pause" size={20} color="white" />
+                           ) : (
+                              <Ionicons name="play" size={20} color="white" />
+                           )}
+                           <Text style={styles.buttonText}>
+                              {isLoading && currentlyPlayingId === item.id
+                                 ? "Loading..."
+                                 : isCurrentlyPlaying && isPlaying
+                                 ? "Pause"
+                                 : "Play Preview"}
+                           </Text>
+                        </TouchableOpacity>
+                     ) : (
+                        <TouchableOpacity
+                           style={[
+                              styles.button,
+                              { backgroundColor: "#ccc", marginTop: 6, flex: 1, marginRight: 8 },
+                           ]}
+                           disabled={true}
+                        >
+                           <Text style={[styles.buttonText, { color: "#888" }]}>No Preview</Text>
+                        </TouchableOpacity>
+                     )}
+                     <TouchableOpacity
+                        style={[styles.button, { marginTop: 6 }]}
+                        onPress={() => openSpotifyLink(searchType, id)}
+                     >
+                        <Image source={SPOTIFY_ICON} style={styles.spotifyIcon} />
+                     </TouchableOpacity>
+                  </View>
+               )}
+               {searchType !== "track" && (
+                  <TouchableOpacity
+                     style={[styles.button, { marginTop: 6 }]}
+                     onPress={() => openSpotifyLink(searchType, id)}
+                  >
+                     <Image source={SPOTIFY_ICON} style={styles.spotifyIcon} />
+                  </TouchableOpacity>
+               )}
             </View>
-            <TouchableOpacity
-               style={styles.spotifyIconButton}
-               accessibilityLabel={`Open ${title} in Spotify`}
-               onPress={() => openSpotifyLink(searchType, id)}
-            >
-               <Image source={{ uri: SPOTIFY_ICON }} style={styles.spotifyIcon} />
-            </TouchableOpacity>
          </View>
       );
    };
@@ -169,46 +319,36 @@ export default function SearchScreen() {
 
    return (
       <SafeAreaView style={[styles.container, { backgroundColor }]}>
-         {!token ? (
-            <View style={styles.connectContainer}>
-               <Text style={[styles.infoText, { color: textColor }]}>Connect to Spotify</Text>
-               <TouchableOpacity
-                  style={styles.connectButton}
-                  onPress={handleSpotifyConnect}
-                  disabled={isAuthenticating}
-               >
-                  <Text style={styles.connectButtonText}>
-                     {isAuthenticating ? "Connecting..." : "Connect"}
-                  </Text>
-               </TouchableOpacity>
-            </View>
-         ) : (
-            <>
-               <Text style={[styles.title, { color: titleColor }]}>Search Spotify</Text>
-               <TextInput
-                  placeholder="Search tracks, albums, artists..."
-                  value={query}
-                  onChangeText={setQuery}
-                  style={styles.searchInput}
-                  placeholderTextColor="#999"
-               />
-               {renderTypeToggles()}
-               <TouchableOpacity style={styles.executeButton} onPress={executeQuery}>
-                  <Text style={styles.executeButtonText}>{loading ? "Loading..." : "Search"}</Text>
-               </TouchableOpacity>
-               <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
-                  <FlatList
-                     data={results}
-                     keyExtractor={(item) => item.id}
-                     renderItem={renderResultItem}
-                     ListEmptyComponent={
-                        !loading && <Text style={styles.emptyText}>No results found</Text>
-                     }
-                     showsVerticalScrollIndicator={false}
-                  />
-               </Animated.View>
-            </>
-         )}
+         <Text style={[styles.title, { color: titleColor }]}>Search Spotify</Text>
+         <TextInput
+            placeholder="Search tracks, albums, artists..."
+            value={query}
+            onChangeText={setQuery}
+            style={styles.searchInput}
+            placeholderTextColor="#999"
+         />
+         {renderTypeToggles()}
+         <TouchableOpacity style={styles.executeButton} onPress={executeQuery}>
+            <Text style={styles.executeButtonText}>{loading ? "Loading..." : "Search"}</Text>
+         </TouchableOpacity>
+         <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
+            <FlatList
+               data={results}
+               keyExtractor={(item) => item.id}
+               renderItem={renderResultItem}
+               ListEmptyComponent={
+                  loading ? (
+                     <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color="#1DB954" />
+                        <Text style={styles.loadingText}>Searching...</Text>
+                     </View>
+                  ) : query && !loading ? (
+                     <Text style={styles.emptyText}>No results found</Text>
+                  ) : null
+               }
+               showsVerticalScrollIndicator={false}
+            />
+         </Animated.View>
       </SafeAreaView>
    );
 }
@@ -314,18 +454,44 @@ const styles = StyleSheet.create({
       color: "#666",
       marginBottom: 6,
    },
-   spotifyIconButton: {
-      padding: 6,
-   },
    spotifyIcon: {
       width: 32,
       height: 32,
       resizeMode: "contain",
+   },
+   button: {
+      padding: 8,
+      borderRadius: 16,
+      backgroundColor: "#eeeeee",
+      alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "center",
+   },
+   buttonRow: {
+      flexDirection: "row",
+      alignItems: "center",
+   },
+   buttonText: {
+      fontSize: 14,
+      fontWeight: "bold",
+      color: "white",
+      marginLeft: 4,
    },
    emptyText: {
       textAlign: "center",
       fontSize: 16,
       color: "#888",
       marginTop: 40,
+   },
+   loadingContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      marginTop: 40,
+   },
+   loadingText: {
+      fontSize: 16,
+      color: "#888",
+      marginTop: 10,
    },
 });
