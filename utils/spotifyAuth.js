@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CLIENT_ID, REDIRECT_URI, SPOTIFY_SCOPES } from "../config/spotifyCredentials";
 import Constants from "expo-constants";
+import axiosInstance from "../api/axiosInstance";
+import authService from "../services/authService";
 const BASE_URL = Constants.expoConfig?.extra?.baseURL;
 
 // Spotify API auth endpoint
@@ -49,21 +51,25 @@ export const useSpotifyAuth = (onAuthSuccess) => {
             }
 
             try {
-               const backendUrl = `${BASE_URL}ranktify/api/callback`;
+               const userInfo = await authService.getUserInfo();
+               const userId = userInfo?.userId;
 
-               const res = await fetch(backendUrl, {
-                  method: "POST",
-                  headers: {
-                     "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ code }),
+               if (!userId) {
+                  throw new Error("User ID is missing from stored user info");
+               }
+
+               const backendUrl = `${BASE_URL}/ranktify/api/callback`;
+
+               const res = await axiosInstance.post(backendUrl, {
+                  code,
+                  user_id: userId,
                });
 
-               if (!res.ok) {
+               if (!res.data?.access_token) {
                   throw new Error("Failed to exchange code for token");
                }
 
-               const { access_token, expires_in } = await res.json();
+               const { access_token, expires_in } = res.data;
 
                await AsyncStorage.setItem("@spotify_token", access_token);
                await AsyncStorage.setItem(
