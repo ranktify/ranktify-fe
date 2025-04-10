@@ -1,17 +1,13 @@
 import { ResponseType, useAuthRequest } from "expo-auth-session";
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {
-   CLIENT_ID,
-   CLIENT_SECRET,
-   REDIRECT_URI,
-   SPOTIFY_SCOPES,
-} from "../config/spotifyCredentials";
+import { CLIENT_ID, REDIRECT_URI, SPOTIFY_SCOPES } from "../config/spotifyCredentials";
+import Constants from "expo-constants";
+const BASE_URL = Constants.expoConfig?.extra?.baseURL;
 
-// Spotify API endpoints
+// Spotify API auth endpoint
 const discovery = {
    authorizationEndpoint: "https://accounts.spotify.com/authorize",
-   tokenEndpoint: "https://accounts.spotify.com/api/token",
 };
 
 export const useSpotifyAuth = (onAuthSuccess) => {
@@ -29,9 +25,8 @@ export const useSpotifyAuth = (onAuthSuccess) => {
 
    const [request, response, promptAsync] = useAuthRequest(
       {
-         responseType: ResponseType.Token,
+         responseType: ResponseType.Code,
          clientId: CLIENT_ID,
-         clientSecret: CLIENT_SECRET,
          scopes: SPOTIFY_SCOPES,
          usePKCE: false,
          redirectUri: REDIRECT_URI,
@@ -40,16 +35,43 @@ export const useSpotifyAuth = (onAuthSuccess) => {
    );
 
    useEffect(() => {
-      if (response?.type === "success") {
-         const { access_token, expires_in } = response.params;
+      if (response?.type === "success" && response.params.code) {
+         const { code } = response.params;
 
-         const saveToken = async () => {
+         const hasExchangedCode = async () => {
+            const exchangedFlag = await AsyncStorage.getItem(`@code_exchanged_${code}`);
+            return !!exchangedFlag;
+         };
+
+         const exchangeCodeForToken = async () => {
+            if (await hasExchangedCode()) {
+               return;
+            }
+
             try {
+               const backendUrl = `${BASE_URL}ranktify/api/callback`;
+
+               const res = await fetch(backendUrl, {
+                  method: "POST",
+                  headers: {
+                     "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ code }),
+               });
+
+               if (!res.ok) {
+                  throw new Error("Failed to exchange code for token");
+               }
+
+               const { access_token, expires_in } = await res.json();
+
                await AsyncStorage.setItem("@spotify_token", access_token);
                await AsyncStorage.setItem(
                   "@spotify_token_expiry",
                   JSON.stringify(Date.now() + expires_in * 1000)
                );
+
+               await AsyncStorage.setItem(`@code_exchanged_${code}`, "true");
 
                setHasSpotifyToken(true);
                setIsAuthenticating(false);
@@ -58,16 +80,34 @@ export const useSpotifyAuth = (onAuthSuccess) => {
                   onAuthSuccess(access_token);
                }
             } catch (error) {
-               console.error("Error saving Spotify token:", error);
+               console.error("Error exchanging code for token:", error);
+               setIsAuthenticating(false);
             }
          };
 
-         saveToken();
+         const checkExistingToken = async () => {
+            const existingToken = await AsyncStorage.getItem("@spotify_token");
+            const expiryString = await AsyncStorage.getItem("@spotify_token_expiry");
+
+            if (existingToken && expiryString) {
+               const expiry = parseInt(expiryString, 10);
+               if (Date.now() < expiry) {
+                  console.log("Token already exists and is valid. Skipping exchange.");
+                  setHasSpotifyToken(true);
+                  setIsAuthenticating(false);
+                  return;
+               }
+            }
+
+            await exchangeCodeForToken();
+         };
+
+         checkExistingToken();
       } else if (response) {
          console.log("Authentication failed or was cancelled");
          setIsAuthenticating(false);
       }
-   }, [response, onAuthSuccess]);
+   }, [response]);
 
    const login = async () => {
       setIsAuthenticating(true);
