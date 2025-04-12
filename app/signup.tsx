@@ -35,6 +35,18 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
    const [isFormValid, setIsFormValid] = useState(false);
    const role = "";
 
+   // State for password validation
+   const [passwordValidations, setPasswordValidations] = useState({
+      length: false,
+      uppercase: false,
+      number: false,
+      specialChar: false,
+   });
+
+   // Add state for toggling password visibility
+   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+   const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
+
    // Theming
    const textColor = useThemeColor({}, "text");
    const backgroundColor = useThemeColor({}, "background");
@@ -61,6 +73,16 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
       );
    }, [first_name, last_name, email, username, password, confirmPassword]);
 
+   // Update password validation state
+   useEffect(() => {
+      setPasswordValidations({
+         length: password.length >= 8 && password.length <= 32,
+         uppercase: /[A-Z]/.test(password),
+         number: /\d/.test(password),
+         specialChar: /[@$!%*?&#]/.test(password),
+      });
+   }, [password]);
+
    // Validation helpers
    const validateEmail = (email) => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -79,7 +101,7 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
 
    const validatePassword = (password) => {
       // Must be 8-32 chars, include uppercase, number, special character
-      const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,32}$/;
+      const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,32}$/;
       return passwordRegex.test(password);
    };
 
@@ -276,15 +298,32 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
                         placeholder="Password"
                         placeholderTextColor={placeholderColor}
                         style={dynamicStyles.input}
-                        secureTextEntry
+                        secureTextEntry={!isPasswordVisible}
                         value={password}
                         onChangeText={setPassword}
                      />
+                     <TouchableOpacity onPress={() => setIsPasswordVisible(!isPasswordVisible)}>
+                        <Ionicons
+                           name={isPasswordVisible ? "eye-off-outline" : "eye-outline"}
+                           size={24}
+                           color="#6200ee"
+                        />
+                     </TouchableOpacity>
                   </View>
-                  <Text style={styles.passwordHint}>
-                     Password must be 8-32 characters long, include at least one uppercase letter,
-                     one number, and one special character.
-                  </Text>
+                  <View style={styles.passwordHintContainer}>
+                     <Text style={[styles.passwordHint, { color: passwordValidations.length ? "green" : "red" }]}>
+                        • 8-32 characters
+                     </Text>
+                     <Text style={[styles.passwordHint, { color: passwordValidations.uppercase ? "green" : "red" }]}>
+                        • At least one uppercase letter
+                     </Text>
+                     <Text style={[styles.passwordHint, { color: passwordValidations.number ? "green" : "red" }]}>
+                        • At least one number
+                     </Text>
+                     <Text style={[styles.passwordHint, { color: passwordValidations.specialChar ? "green" : "red" }]}>
+                        • At least one special character (@$!%*?&#)
+                     </Text>
+                  </View>
 
                   <View style={dynamicStyles.inputContainer}>
                      <Ionicons
@@ -297,10 +336,17 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
                         placeholder="Confirm Password"
                         placeholderTextColor={placeholderColor}
                         style={dynamicStyles.input}
-                        secureTextEntry
+                        secureTextEntry={!isConfirmPasswordVisible}
                         value={confirmPassword}
                         onChangeText={setConfirmPassword}
                      />
+                     <TouchableOpacity onPress={() => setIsConfirmPasswordVisible(!isConfirmPasswordVisible)}>
+                        <Ionicons
+                           name={isConfirmPasswordVisible ? "eye-off-outline" : "eye-outline"}
+                           size={24}
+                           color="#6200ee"
+                        />
+                     </TouchableOpacity>
                   </View>
 
                   <TouchableOpacity
@@ -402,12 +448,14 @@ const styles = StyleSheet.create({
       fontSize: 16,
       fontWeight: "bold",
    },
-   passwordHint: {
-      fontSize: 12,
-      color: "rgba(150, 150, 150, 0.8)",
+   passwordHintContainer: {
       marginTop: -10,
       marginBottom: 10,
       marginLeft: 5,
+   },
+   passwordHint: {
+      fontSize: 12,
+      marginBottom: 2,
    },
    loginContainer: {
       marginTop: 20,
