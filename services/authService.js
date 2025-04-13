@@ -169,7 +169,7 @@ export const authService = {
             return false;
          }
 
-         const response = await axios.post(`${baseURL}/ranktify/user/refresh`, {
+         const response = await axios.post(`${baseURL}/ranktify/api/refresh`, {
             refresh_token: refreshToken,
          });
 
