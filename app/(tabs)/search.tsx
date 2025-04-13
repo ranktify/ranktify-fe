@@ -25,7 +25,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { searchAndGetLinks } from "@/utils/spotifySearch";
 import SpotifyIcon from "@/assets/images/spotify-icon.png";
 
-const statusBarHeight = Platform.OS === "ios" ? 50 : StatusBar.currentHeight || 0;
+const statusBarHeight = Platform.OS === "ios" ? 8 : StatusBar.currentHeight || 0;
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SEARCH_TYPES = ["track", "album", "artist"];
 const SPOTIFY_ICON = SpotifyIcon;
@@ -38,6 +38,7 @@ const SpotifyAPI = {
 
 export default function SearchScreen() {
    const [query, setQuery] = useState("");
+   const [spotifyToken, setSpotifyToken] = useState<string | null>(null);
    const [results, setResults] = useState<any[]>([]);
    const [loading, setLoading] = useState(false);
    const [searchType, setSearchType] = useState("track");
@@ -50,6 +51,15 @@ export default function SearchScreen() {
    const textColor = useThemeColor({}, "text");
    const backgroundColor = useThemeColor({}, "background");
    const titleColor = useThemeColor({}, "text");
+
+   useEffect(() => {
+      const fetchToken = async () => {
+         const token = await getSpotifyToken();
+         console.log('Current Spotify Token:', token);
+         setSpotifyToken(token);
+      };
+      fetchToken();
+   }, []);
 
    const executeQuery = async () => {
       if (!query) {
@@ -66,15 +76,25 @@ export default function SearchScreen() {
                "Authentication Required",
                "Please connect your Spotify account in the Profile tab"
             );
+            setLoading(false);
             return;
          }
+
+         setSpotifyToken(token);
 
          if (searchType === "track") {
             const result = await searchAndGetLinks(query);
             if (result.success) {
                setResults(result.results);
             } else {
-               Alert.alert("Error", result.error || "Failed to search Spotify");
+               if (result.error?.includes("token")) {
+                  Alert.alert(
+                     "Session Expired",
+                     "Your Spotify session has expired. Please reconnect in the Profile tab."
+                  );
+               } else {
+                  Alert.alert("Error", result.error || "Failed to search Spotify");
+               }
             }
          } else {
             const params = new URLSearchParams({
@@ -318,37 +338,42 @@ export default function SearchScreen() {
    );
 
    return (
-      <SafeAreaView style={[styles.container, { backgroundColor }]}>
-         <Text style={[styles.title, { color: titleColor }]}>Search Spotify</Text>
-         <TextInput
-            placeholder="Search tracks, albums, artists..."
-            value={query}
-            onChangeText={setQuery}
-            style={styles.searchInput}
-            placeholderTextColor="#999"
-         />
-         {renderTypeToggles()}
-         <TouchableOpacity style={styles.executeButton} onPress={executeQuery}>
-            <Text style={styles.executeButtonText}>{loading ? "Loading..." : "Search"}</Text>
-         </TouchableOpacity>
-         <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
-            <FlatList
-               data={results}
-               keyExtractor={(item) => item.id}
-               renderItem={renderResultItem}
-               ListEmptyComponent={
-                  loading ? (
-                     <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color="#1DB954" />
-                        <Text style={styles.loadingText}>Searching...</Text>
-                     </View>
-                  ) : query && !loading ? (
-                     <Text style={styles.emptyText}>No results found</Text>
-                  ) : null
-               }
-               showsVerticalScrollIndicator={false}
+      <SafeAreaView style={{ flex: 1, backgroundColor }}>
+         <View style={styles.container}>
+            {spotifyToken && (
+               <Text style={[styles.tokenText]}>Token: {spotifyToken.substring(0, 20)}...</Text>
+            )}
+            <Text style={[styles.title, { color: titleColor }]}>Search Spotify</Text>
+            <TextInput
+               placeholder="Search tracks, albums, artists..."
+               value={query}
+               onChangeText={setQuery}
+               style={styles.searchInput}
+               placeholderTextColor="#999"
             />
-         </Animated.View>
+            {renderTypeToggles()}
+            <TouchableOpacity style={styles.executeButton} onPress={executeQuery}>
+               <Text style={styles.executeButtonText}>{loading ? "Loading..." : "Search"}</Text>
+            </TouchableOpacity>
+            <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
+               <FlatList
+                  data={results}
+                  keyExtractor={(item) => item.id}
+                  renderItem={renderResultItem}
+                  ListEmptyComponent={
+                     loading ? (
+                        <View style={styles.loadingContainer}>
+                           <ActivityIndicator size="large" color="#1DB954" />
+                           <Text style={styles.loadingText}>Searching...</Text>
+                        </View>
+                     ) : query && !loading ? (
+                        <Text style={styles.emptyText}>No results found</Text>
+                     ) : null
+                  }
+                  showsVerticalScrollIndicator={false}
+               />
+            </Animated.View>
+         </View>
       </SafeAreaView>
    );
 }
@@ -356,7 +381,7 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
    container: {
       flex: 1,
-      padding: 16,
+      paddingHorizontal: 16,
       paddingTop: statusBarHeight,
    },
    connectContainer: {
@@ -493,5 +518,10 @@ const styles = StyleSheet.create({
       fontSize: 16,
       color: "#888",
       marginTop: 10,
+   },
+   tokenText: {
+      fontSize: 12,
+      color: '#666',
+      marginBottom: 8,
    },
 });
