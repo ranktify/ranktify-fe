@@ -68,7 +68,6 @@ export default function SearchScreen() {
       }
 
       setLoading(true);
-
       try {
          const token = await getSpotifyToken();
          if (!token) {
@@ -82,7 +81,7 @@ export default function SearchScreen() {
 
          setSpotifyToken(token);
 
-         if (searchType === "track") {
+         if (searchType === 'track') {
             const result = await searchAndGetLinks(query);
             if (result.success) {
                setResults(result.results);
@@ -110,14 +109,6 @@ export default function SearchScreen() {
                },
             });
 
-            if (response.status === 401) {
-               Alert.alert(
-                  "Session Expired",
-                  "Your Spotify session has expired. Please reconnect in the Profile tab."
-               );
-               return;
-            }
-
             if (!response.ok) {
                if (response.status === 429) {
                   const retryAfter = response.headers.get("Retry-After");
@@ -127,7 +118,26 @@ export default function SearchScreen() {
             }
 
             const data = await response.json();
-            setResults(data[`${searchType}s`]?.items || []);
+            let processedResults = [];
+
+            if (searchType === 'album') {
+               processedResults = data.albums.items.map(album => ({
+                  id: album.id,
+                  name: album.name,
+                  artists: album.artists.map(a => a.name).join(", "),
+                  images: album.images,
+                  type: 'album'
+               }));
+            } else if (searchType === 'artist') {
+               processedResults = data.artists.items.map(artist => ({
+                  id: artist.id,
+                  name: artist.name,
+                  images: artist.images,
+                  type: 'artist'
+               }));
+            }
+
+            setResults(processedResults);
          }
       } catch (error) {
          console.error("Search error:", error);
@@ -157,13 +167,14 @@ export default function SearchScreen() {
    const handleTogglePress = (type) => {
       if (type !== searchType) {
          Haptics.selectionAsync();
+         stopSound();
+         setCurrentlyPlayingId(null);
          Animated.sequence([
             Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
             Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
          ]).start();
          setSearchType(type);
          setResults([]);
-         stopSound();
       }
    };
 
@@ -249,21 +260,23 @@ export default function SearchScreen() {
    }, []);
 
    const renderResultItem = ({ item }) => {
+      if (!item) return null;
+
       const id = item.id;
       const image = item.image || item.images?.[0]?.url || item.album?.images?.[0]?.url;
       const title = item.name || item.title;
       const subtitle =
          item.artists ||
          (item.artists ? item.artists.map((a) => a.name).join(", ") : item.label || "");
-      const previewUrl = item.previewUrl || item.preview_url;
+      const previewUrl = item.preview_url || item.previewUrl;
       const isCurrentlyPlaying = currentlyPlayingId === id;
 
       return (
          <View style={styles.card}>
             {image && <Image source={{ uri: image }} style={styles.cardImage} />}
             <View style={styles.cardTextContainer}>
-               <Text style={styles.cardTitle}>{title}</Text>
-               <Text style={styles.cardSubtitle}>{subtitle}</Text>
+               <Text style={styles.cardTitle} numberOfLines={1}>{title}</Text>
+               <Text style={styles.cardSubtitle} numberOfLines={1}>{subtitle}</Text>
                {searchType === "track" && (
                   <View style={styles.buttonRow}>
                      {previewUrl ? (
@@ -324,13 +337,18 @@ export default function SearchScreen() {
 
    const renderTypeToggles = () => (
       <View style={styles.toggleGroup}>
-         {SEARCH_TYPES.map((type) => (
+         {[
+            { type: 'track', icon: 'musical-note' },
+            { type: 'album', icon: 'disc' },
+            { type: 'artist', icon: 'person' }
+         ].map(({ type, icon }) => (
             <TouchableOpacity
                key={type}
                style={[styles.toggleButton, searchType === type && styles.activeToggle]}
                onPress={() => handleTogglePress(type)}
                accessibilityLabel={`Filter by ${type}`}
             >
+               <Ionicons name={icon} size={20} color="white" style={styles.toggleIcon} />
                <Text style={styles.toggleText}>{type.toUpperCase()}</Text>
             </TouchableOpacity>
          ))}
@@ -339,40 +357,60 @@ export default function SearchScreen() {
 
    return (
       <SafeAreaView style={{ flex: 1, backgroundColor }}>
-         <View style={styles.container}>
-            {spotifyToken && (
-               <Text style={[styles.tokenText]}>Token: {spotifyToken.substring(0, 20)}...</Text>
-            )}
-            <Text style={[styles.title, { color: titleColor }]}>Search Spotify</Text>
-            <TextInput
-               placeholder="Search tracks, albums, artists..."
-               value={query}
-               onChangeText={setQuery}
-               style={styles.searchInput}
-               placeholderTextColor="#999"
-            />
-            {renderTypeToggles()}
-            <TouchableOpacity style={styles.executeButton} onPress={executeQuery}>
-               <Text style={styles.executeButtonText}>{loading ? "Loading..." : "Search"}</Text>
-            </TouchableOpacity>
-            <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
-               <FlatList
-                  data={results}
-                  keyExtractor={(item) => item.id}
-                  renderItem={renderResultItem}
-                  ListEmptyComponent={
-                     loading ? (
-                        <View style={styles.loadingContainer}>
-                           <ActivityIndicator size="large" color="#1DB954" />
-                           <Text style={styles.loadingText}>Searching...</Text>
-                        </View>
-                     ) : query && !loading ? (
-                        <Text style={styles.emptyText}>No results found</Text>
-                     ) : null
-                  }
-                  showsVerticalScrollIndicator={false}
-               />
-            </Animated.View>
+         <View style={[styles.container, { backgroundColor }]}>
+            <View style={styles.headerContainer}>
+               <Text style={[styles.title, { color: titleColor }]}>Search Spotify</Text>
+               <Text style={[styles.subtitle, { color: textColor }]}>Search tracks, albums, and artists</Text>
+            </View>
+
+            <View style={styles.formContainer}>
+               <View style={styles.inputContainer}>
+                  <Ionicons name="search-outline" size={24} color="#6200ee" style={styles.inputIcon} />
+                  <TextInput
+                     placeholder="Search tracks, albums, artists..."
+                     value={query}
+                     onChangeText={setQuery}
+                     style={styles.input}
+                     placeholderTextColor="#999"
+                     returnKeyType="search"
+                     onSubmitEditing={executeQuery}
+                  />
+                  {query.length > 0 && (
+                     <TouchableOpacity 
+                        style={styles.searchButton} 
+                        onPress={executeQuery}
+                        disabled={loading}
+                     >
+                        {loading ? (
+                           <ActivityIndicator color="#6200ee" size="small" />
+                        ) : (
+                           <Ionicons name="arrow-forward" size={24} color="#6200ee" />
+                        )}
+                     </TouchableOpacity>
+                  )}
+               </View>
+
+               {renderTypeToggles()}
+
+               <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
+                  <FlatList
+                     data={results}
+                     keyExtractor={(item) => item.id}
+                     renderItem={renderResultItem}
+                     ListEmptyComponent={
+                        loading ? (
+                           <View style={styles.loadingContainer}>
+                              <ActivityIndicator size="large" color="#6200ee" />
+                              <Text style={styles.loadingText}>Searching...</Text>
+                           </View>
+                        ) : query && !loading ? (
+                           <Text style={styles.emptyText}>No results found</Text>
+                        ) : null
+                     }
+                     showsVerticalScrollIndicator={false}
+                  />
+               </Animated.View>
+            </View>
          </View>
       </SafeAreaView>
    );
@@ -381,84 +419,98 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
    container: {
       flex: 1,
-      paddingHorizontal: 16,
-      paddingTop: statusBarHeight,
+      padding: 20,
    },
-   connectContainer: {
-      flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
+   headerContainer: {
+      alignItems: 'center',
+      marginTop: 40,
+      marginBottom: 30,
    },
-   infoText: {
+   title: {
+      fontSize: 28,
+      fontWeight: "bold",
+      marginBottom: 8,
+   },
+   subtitle: {
       fontSize: 16,
       marginBottom: 20,
    },
-   connectButton: {
-      backgroundColor: "#1DB954",
-      padding: 12,
-      borderRadius: 25,
+   formContainer: {
+      width: '100%',
+      maxWidth: SCREEN_WIDTH * 0.85,
+      alignSelf: 'center',
+      flex: 1,
    },
-   connectButtonText: {
-      color: "white",
-      fontWeight: "bold",
-   },
-   title: {
-      fontSize: 26,
-      fontWeight: "bold",
+   inputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'white',
+      borderRadius: 8,
       marginBottom: 16,
-   },
-   searchInput: {
-      height: 48,
-      backgroundColor: "#f2f2f2",
-      borderRadius: 12,
       paddingHorizontal: 16,
-      fontSize: 16,
-      marginBottom: 12,
+      height: 56,
       elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.2,
+      shadowRadius: 1.41,
+   },
+   inputIcon: {
+      marginRight: 12,
+   },
+   input: {
+      flex: 1,
+      height: 56,
+      fontSize: 16,
    },
    toggleGroup: {
       flexDirection: "row",
       justifyContent: "space-between",
-      marginBottom: 12,
+      marginBottom: 16,
+      gap: 8,
    },
    toggleButton: {
       flex: 1,
-      marginHorizontal: 4,
       backgroundColor: "#cccccc",
-      paddingVertical: 8,
-      borderRadius: 20,
+      height: 56,
+      borderRadius: 8,
       alignItems: "center",
+      justifyContent: "center",
+      flexDirection: 'row',
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.2,
+      shadowRadius: 1.41,
+      gap: 8,
    },
    activeToggle: {
-      backgroundColor: "#1DB954",
+      backgroundColor: "#6200ee",
+   },
+   toggleIcon: {
+      marginRight: 4,
    },
    toggleText: {
       color: "white",
       fontWeight: "bold",
       fontSize: 14,
    },
-   executeButton: {
-      backgroundColor: "#1DB954",
-      padding: 14,
-      borderRadius: 30,
-      alignItems: "center",
-      marginBottom: 16,
-   },
-   executeButtonText: {
-      color: "white",
-      fontWeight: "bold",
-      fontSize: 16,
+   searchButton: {
+      padding: 8,
+      borderRadius: 20,
    },
    card: {
-      backgroundColor: "#fff",
-      borderRadius: 16,
-      elevation: 4,
-      padding: 12,
+      backgroundColor: "white",
+      borderRadius: 8,
+      padding: 16,
       marginBottom: 16,
       flexDirection: "row",
       alignItems: "center",
-      borderWidth: Platform.OS === "ios" ? 0.5 : 1,
-      borderColor: Platform.OS === "ios" ? "#e0e0e0" : "#dcdcdc",
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.2,
+      shadowRadius: 1.41,
    },
    cardImage: {
       width: 60,
@@ -505,7 +557,7 @@ const styles = StyleSheet.create({
    emptyText: {
       textAlign: "center",
       fontSize: 16,
-      color: "#888",
+      color: "#666",
       marginTop: 40,
    },
    loadingContainer: {
@@ -516,12 +568,10 @@ const styles = StyleSheet.create({
    },
    loadingText: {
       fontSize: 16,
-      color: "#888",
+      color: "#6200ee",
       marginTop: 10,
    },
    tokenText: {
-      fontSize: 12,
-      color: '#666',
-      marginBottom: 8,
+      display: 'none',
    },
 });
