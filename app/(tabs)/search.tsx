@@ -61,6 +61,20 @@ export default function SearchScreen() {
       fetchToken();
    }, []);
 
+   const removeDuplicates = (items) => {
+      const seen = new Set();
+      return items.filter(item => {
+         const key = `${item.id}-${item.type || 'track'}-${
+            item.artists ? 
+               (typeof item.artists === 'string' ? item.artists : item.artists.map(a => a.name).join(', ')).split(', ')[0] : 
+               item.label || ''
+         }`;
+         if (seen.has(key)) return false;
+         seen.add(key);
+         return true;
+      });
+   };
+
    const executeQuery = async () => {
       if (!query) {
          Alert.alert("Input Needed", "Please enter a search query.");
@@ -84,7 +98,7 @@ export default function SearchScreen() {
          if (searchType === 'track') {
             const result = await searchAndGetLinks(query);
             if (result.success) {
-               setResults(result.results);
+               setResults(removeDuplicates(result.results));
             } else {
                if (result.error?.includes("token")) {
                   Alert.alert(
@@ -121,20 +135,20 @@ export default function SearchScreen() {
             let processedResults = [];
 
             if (searchType === 'album') {
-               processedResults = data.albums.items.map(album => ({
+               processedResults = removeDuplicates(data.albums.items.map(album => ({
                   id: album.id,
                   name: album.name,
                   artists: album.artists.map(a => a.name).join(", "),
                   images: album.images,
                   type: 'album'
-               }));
+               })));
             } else if (searchType === 'artist') {
-               processedResults = data.artists.items.map(artist => ({
+               processedResults = removeDuplicates(data.artists.items.map(artist => ({
                   id: artist.id,
                   name: artist.name,
                   images: artist.images,
                   type: 'artist'
-               }));
+               })));
             }
 
             setResults(processedResults);
@@ -358,11 +372,6 @@ export default function SearchScreen() {
    return (
       <SafeAreaView style={{ flex: 1, backgroundColor }}>
          <View style={[styles.container, { backgroundColor }]}>
-            <View style={styles.headerContainer}>
-               <Text style={[styles.title, { color: titleColor }]}>Search Spotify</Text>
-               <Text style={[styles.subtitle, { color: textColor }]}>Search tracks, albums, and artists</Text>
-            </View>
-
             <View style={styles.formContainer}>
                <View style={styles.inputContainer}>
                   <Ionicons name="search-outline" size={24} color="#6200ee" style={styles.inputIcon} />
@@ -395,8 +404,16 @@ export default function SearchScreen() {
                <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
                   <FlatList
                      data={results}
-                     keyExtractor={(item) => item.id}
+                     keyExtractor={(item) => {
+                        const uniqueKey = `${item.id}-${item.type || 'track'}-${
+                           item.artists ? 
+                              item.artists.split(', ')[0] : 
+                              item.label || ''
+                        }`;
+                        return uniqueKey;
+                     }}
                      renderItem={renderResultItem}
+                     contentContainerStyle={styles.listContainer}
                      ListEmptyComponent={
                         loading ? (
                            <View style={styles.loadingContainer}>
@@ -420,20 +437,16 @@ const styles = StyleSheet.create({
    container: {
       flex: 1,
       padding: 20,
+      paddingTop: 8,
    },
    headerContainer: {
-      alignItems: 'center',
-      marginTop: 40,
-      marginBottom: 30,
+      display: 'none',
    },
    title: {
-      fontSize: 28,
-      fontWeight: "bold",
-      marginBottom: 8,
+      display: 'none',
    },
    subtitle: {
-      fontSize: 16,
-      marginBottom: 20,
+      display: 'none', 
    },
    formContainer: {
       width: '100%',
@@ -500,17 +513,23 @@ const styles = StyleSheet.create({
       borderRadius: 20,
    },
    card: {
-      backgroundColor: "white",
-      borderRadius: 8,
+      backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.8)' : 'white',
+      borderRadius: 16,
       padding: 16,
       marginBottom: 16,
       flexDirection: "row",
       alignItems: "center",
-      elevation: 2,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.2,
-      shadowRadius: 1.41,
+      elevation: 4,
+      shadowColor: '#6200ee',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.1,
+      shadowRadius: 10,
+      ...Platform.select({
+         ios: {
+            borderWidth: 1,
+            borderColor: 'rgba(98, 0, 238, 0.05)',
+         }
+      })
    },
    cardImage: {
       width: 60,
@@ -573,5 +592,8 @@ const styles = StyleSheet.create({
    },
    tokenText: {
       display: 'none',
+   },
+   listContainer: {
+      paddingBottom: 25,
    },
 });
