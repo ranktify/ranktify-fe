@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CLIENT_ID, REDIRECT_URI, SPOTIFY_SCOPES } from "../config/spotifyCredentials";
 import Constants from "expo-constants";
+import axiosInstance from "../api/axiosInstance";
+import authService from "../services/authService";
 const BASE_URL = Constants.expoConfig?.extra?.baseURL;
 
 // Spotify API auth endpoint
@@ -49,29 +51,32 @@ export const useSpotifyAuth = (onAuthSuccess) => {
             }
 
             try {
-               const backendUrl = `${BASE_URL}ranktify/api/callback`;
+               const userInfo = await authService.getUserInfo();
+               const userId = userInfo?.userId;
 
-               const res = await fetch(backendUrl, {
-                  method: "POST",
-                  headers: {
-                     "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ code }),
+               if (!userId) {
+                  throw new Error("User ID is missing from stored user info");
+               }
+
+               const backendUrl = `${BASE_URL}/ranktify/api/callback`;
+               const res = await axiosInstance.post(backendUrl, {
+                  code,
+                  user_id: userId,
                });
 
-               if (!res.ok) {
+               if (!res.data?.access_token) {
                   throw new Error("Failed to exchange code for token");
                }
 
-               const { access_token, expires_in } = await res.json();
+               const access_token = res.data.access_token;
+               const ExpiresIn = 3600;
+               const expiryTimestamp = Date.now() + (ExpiresIn * 1000);
 
-               await AsyncStorage.setItem("@spotify_token", access_token);
-               await AsyncStorage.setItem(
-                  "@spotify_token_expiry",
-                  JSON.stringify(Date.now() + expires_in * 1000)
-               );
-
-               await AsyncStorage.setItem(`@code_exchanged_${code}`, "true");
+               await Promise.all([
+                  AsyncStorage.setItem("@spotify_token", access_token),
+                  AsyncStorage.setItem("@spotify_token_expiry", expiryTimestamp.toString()),
+                  AsyncStorage.setItem(`@code_exchanged_${code}`, "true")
+               ]);
 
                setHasSpotifyToken(true);
                setIsAuthenticating(false);
@@ -92,7 +97,6 @@ export const useSpotifyAuth = (onAuthSuccess) => {
             if (existingToken && expiryString) {
                const expiry = parseInt(expiryString, 10);
                if (Date.now() < expiry) {
-                  console.log("Token already exists and is valid. Skipping exchange.");
                   setHasSpotifyToken(true);
                   setIsAuthenticating(false);
                   return;
@@ -104,7 +108,6 @@ export const useSpotifyAuth = (onAuthSuccess) => {
 
          checkExistingToken();
       } else if (response) {
-         console.log("Authentication failed or was cancelled");
          setIsAuthenticating(false);
       }
    }, [response]);
@@ -137,14 +140,19 @@ export const getSpotifyToken = async () => {
       const token = await AsyncStorage.getItem("@spotify_token");
       const expiryString = await AsyncStorage.getItem("@spotify_token_expiry");
 
-      if (token && expiryString) {
-         const expiry = parseInt(expiryString, 10);
-
-         if (Date.now() < expiry) {
-            return token;
-         }
+      if (!token || !expiryString) {
+         return null;
       }
 
+      const expiry = parseInt(expiryString, 10);
+      const now = Date.now();
+
+      if (now < expiry) {
+         return token;
+      }
+
+      await AsyncStorage.removeItem("@spotify_token");
+      await AsyncStorage.removeItem("@spotify_token_expiry");
       return null;
    } catch (error) {
       console.error("Error getting Spotify token:", error);
