@@ -37,9 +37,8 @@ To configure the app for local development, add the following to your `app.json`
 "extra": {
       "baseURL": "http://localhost:8080",
       "spotify": {
-        "clientId": "INSERT_CLIENT_ID", //replace with clientID
-        "clientSecret": "INSERT_CLIENT_SECRET", //replace with ClientSecret
-        "redirectUri": "exp://127.0.0.1:19000/" // Add this redirectUri to your Spotify Developer Dashboard Application
+        "clientId": "INSERT_CLIENT_ID", // Spotify API Client ID
+        "redirectUri": "exp://127.0.0.1:19000/" // Spotify API Redirect URI
       }
     }
 ```
@@ -50,9 +49,8 @@ To configure the app to communicate with deployed backend environment, add the f
 "extra": {
     "baseURL": "*insert deployed environment link here*",
     "spotify": {
-        "clientId": "INSERT_CLIENT_ID", //replace with clientID
-        "clientSecret": "INSERT_CLIENT_SECRET", //replace with ClientSecret
-        "redirectUri": "exp://127.0.0.1:19000/" // Add this redirectUri to your Spotify Developer Dashboard Application
+        "clientId": "INSERT_CLIENT_ID", // Spotify API Client ID
+        "redirectUri": "exp://127.0.0.1:19000/" // Spotify API Redirect URI
       }
     }
 ```
