@@ -44,5 +44,6 @@
         "clientId": "INSERT_CLIENT_ID",
         "redirectUri": "exp://127.0.0.1:19000/" // Add this redirectUri to your Spotify Developer Dashboard Application
       }
+    }
   }
 }
