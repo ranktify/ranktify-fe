@@ -1,10 +1,12 @@
-import { getSpotifyToken } from "./spotifyAuth";
+import { getSpotifyToken, refreshSpotifyToken } from "./spotifyAuth";
 
 const BASE_URL = "https://api.spotify.com/v1";
 
 const fetchFromSpotify = async (endpoint, options = {}) => {
-   const token = await getSpotifyToken();
-
+   let token = await getSpotifyToken();
+   if (!token) {
+      token = await refreshSpotifyToken();
+   }
    if (!token) {
       throw new Error("No Spotify token available");
    }
