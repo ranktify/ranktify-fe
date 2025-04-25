@@ -1,74 +1,191 @@
-import { Image, StyleSheet, Platform } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { Image, StyleSheet, ScrollView, View, Text, TouchableOpacity, Alert } from 'react-native';
 
 export default function HomeScreen() {
+  const topSongs = [
+    {
+      title: "Blinding Lights",
+      artist: "The Weeknd",
+      imageUri: "https://upload.wikimedia.org/wikipedia/en/e/e6/The_Weeknd_-_Blinding_Lights.png",
+    },
+    {
+      title: "Dance Monkey",
+      artist: "Tones and I",
+      imageUri: "https://i.scdn.co/image/ab67616d0000b27338802659d156935ada63c9e3",
+    },
+    {
+      title: "Bohemian Rhapsody",
+      artist: "Queen",
+      imageUri: "https://i.scdn.co/image/ab67616d0000b27328581cfe196c266c132a9d62",
+    },
+    {
+      title: "Sicko Mode",
+      artist: "Travis Scott",
+      imageUri: "https://i.scdn.co/image/ab67616d00001e02072e9faef2ef7b6db63834a3",
+    },
+    {
+      title: "Bad Guy",
+      artist: "Billie Eilish",
+      imageUri: "https://i.scdn.co/image/ab67616d0000b27350a3147b4edd7701a876c6ce",
+    },
+  ];
+
+  const handleGenrePress = (genre: string) => {
+    Alert.alert(`This is the "${genre}" genre`);
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <ScrollView contentContainerStyle={styles.scrollContent}>
+      <View style={styles.container}>
+        {/* Top 5 Songs Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Top 5 Songs Between Friends</Text>
+          {topSongs.map((song, index) => (
+            <View key={index} style={styles.songItem}>
+              <View style={styles.songSquare}>
+                <Image
+                  source={{ uri: song.imageUri }}
+                  style={styles.songIcon}
+                  resizeMode="cover" // Ensures the image fills the square
+                />
+              </View>
+              <View>
+                <Text style={styles.songText}>{song.title}</Text>
+                <Text style={styles.artistText}>{song.artist}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* Top 5 Rated Songs in Our App Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Top 5 Rated Songs in Our App</Text>
+          {['Song A', 'Song B', 'Song C', 'Song D', 'Song E'].map((song, index) => (
+            <View key={index} style={styles.songItem}>
+              <View style={styles.songSquare}>
+                <Image
+                  source={{ uri: 'https://via.placeholder.com/30' }}
+                  style={styles.songIcon}
+                  resizeMode="cover"
+                />
+              </View>
+              <Text style={styles.songText}>{song}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Discover by Genre Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Discover by Genre</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.genreScroll}>
+            {['Pop', 'Rock', 'Hyper Pop', 'Country'].map((genre, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.genreSquare}
+                onPress={() => handleGenrePress(genre)}
+              >
+                <Image
+                  source={{ uri: 'https://via.placeholder.com/100' }}
+                  style={styles.genreImage}
+                  resizeMode="cover"
+                />
+                <Text style={styles.genreText}>{genre}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Friend Activity Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Friend Activity</Text>
+          <View style={styles.friendActivityBox}>
+            <Text style={styles.friendActivityText}>Friend is rating a lot of music</Text>
+          </View>
+        </View>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  scrollContent: {
+    flexGrow: 1, // Ensures the scrollable area adjusts dynamically
+  },
+  container: {
+    flex: 1,
+    backgroundColor: '#121212', // Changed to dark background
+    padding: 16,
+    paddingTop: 48, // Added margin to prevent clipping with phone time
+    paddingBottom: 64, // Added bottom margin to avoid collision with nav bar
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 20, // Increased font size
+    fontWeight: 'bold',
+    marginBottom: 12,
+    color: '#FFFFFF', // Changed text color to white
+    textAlign: 'center', // Centralized the header
+  },
+  songItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  songSquare: {
+    width: 50,
+    height: 50,
+    backgroundColor: '#1E1E1E', // Changed to dark gray
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    overflow: 'hidden', // Ensures the image doesn't overflow the square
+  },
+  songIcon: {
+    width: '100%', // Ensures the image fills the square
+    height: '100%',
+  },
+  songText: {
+    fontSize: 16,
+    color: '#FFFFFF', // Changed text color to white
+  },
+  artistText: {
+    fontSize: 14,
+    color: '#AAAAAA', // Lighter text for artist name
+  },
+  genreScroll: {
+    flexDirection: 'row',
+  },
+  genreSquare: {
+    alignItems: 'center',
+    justifyContent: 'center', // Centered text vertically
+    marginRight: 16,
+    width: 100,
+    height: 100,
+    backgroundColor: '#1E1E1E', // Changed to dark gray
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  genreImage: {
+    width: '100%',
+    height: '100%',
+  },
+  genreText: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: '#FFFFFF', // Changed text color to white
+    position: 'absolute', // Ensures text overlays the box
+  },
+  friendActivityBox: {
+    backgroundColor: '#1E1E1E', // Changed to dark gray
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  friendActivityText: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: '#FFFFFF', // Changed text color to white
   },
 });
