@@ -1,24 +1,24 @@
 import { useThemeColor } from "@/hooks/useThemeColor";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
    ActivityIndicator,
-   Button,
-   Platform,
+	Alert,
+	Button,
+	Platform,
    SafeAreaView,
-   ScrollView,
-   StatusBar,
-   StyleSheet,
-   Text,
-   TouchableOpacity,
-   View,
-   Alert,
+	ScrollView,
+	StatusBar,
+	StyleSheet,
+	Text,
+	TouchableOpacity,
+	View,
    Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../contexts/AuthContext";
-import { useSpotifyAuth } from "../../utils/spotifyAuth";
-import { useState, useEffect } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { refreshSpotifyToken, useSpotifyAuth } from "../../utils/spotifyAuth";
 import SpotifyIcon from "@/assets/images/spotify-icon.png";
 
 const statusBarHeight = Platform.OS === "ios" ? 8 : StatusBar.currentHeight;
@@ -107,6 +107,22 @@ export default function ProfileScreen() {
          await logout();
       } catch (error) {
          console.error("Logout error:", error);
+      }
+   };
+
+   const handleSpotifyRefresh = async () => {
+      try {
+         const oldToken = await AsyncStorage.getItem("@spotify_token");
+         const newToken = await refreshSpotifyToken();
+         console.log("Spotify token refresh", { oldToken, newToken });
+         if (newToken) {
+            Alert.alert("Token Refresh", `Old Token:\n${oldToken}\n\nNew Token:\n${newToken}`);
+         } else {
+            Alert.alert("Error", "Failed to refresh Spotify token.");
+         }
+      } catch (error) {
+         console.error("Spotify refresh error:", error);
+         Alert.alert("Error", error.message || "Error refreshing Spotify token.");
       }
    };
 
@@ -232,6 +248,15 @@ export default function ProfileScreen() {
                               : "Connect"}
                         </Text>
                      </TouchableOpacity>
+               {hasSpotifyToken && (
+                  <View style={styles.buttonContainer}>
+                     <Button
+                        title="Refresh Spotify Token"
+                        onPress={handleSpotifyRefresh}
+                        color="#1DB954"
+                     />
+                  </View>
+               )}
                   </View>
                </View>
 

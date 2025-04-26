@@ -1,9 +1,9 @@
-import { ResponseType, useAuthRequest } from "expo-auth-session";
-import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { CLIENT_ID, REDIRECT_URI, SPOTIFY_SCOPES } from "../config/spotifyCredentials";
+import { ResponseType, useAuthRequest } from "expo-auth-session";
 import Constants from "expo-constants";
+import { useEffect, useState } from "react";
 import axiosInstance from "../api/axiosInstance";
+import { CLIENT_ID, REDIRECT_URI, SPOTIFY_SCOPES } from "../config/spotifyCredentials";
 import authService from "../services/authService";
 const BASE_URL = Constants.expoConfig?.extra?.baseURL;
 
@@ -58,7 +58,7 @@ export const useSpotifyAuth = (onAuthSuccess) => {
                   throw new Error("User ID is missing from stored user info");
                }
 
-               const backendUrl = `${BASE_URL}/ranktify/api/callback`;
+               const backendUrl = `/api/callback`;
                const res = await axiosInstance.post(backendUrl, {
                   code,
                   user_id: userId,
@@ -156,6 +156,38 @@ export const getSpotifyToken = async () => {
       return null;
    } catch (error) {
       console.error("Error getting Spotify token:", error);
+      return null;
+   }
+};
+
+export async function refreshSpotifyToken() {
+   try {
+      const userInfo = await authService.getUserInfo();
+      const userId = userInfo?.userId;
+      if (!userId) {
+         console.error("No user ID available for Spotify refresh");
+         return null;
+      }
+
+      const res = await axiosInstance.post(`/api/spotify-refresh`, {
+         user_id: userId,
+      });
+
+      const { access_token, expires_in } = res.data;
+      if (!access_token) {
+         console.error("No access token returned from refresh");
+         return null;
+      }
+
+      await AsyncStorage.setItem("@spotify_token", access_token);
+      await AsyncStorage.setItem(
+         "@spotify_token_expiry",
+         JSON.stringify(Date.now() + expires_in * 1000)
+      );
+
+      return access_token;
+   } catch (error) {
+      console.error("Error refreshing Spotify token:", error);
       return null;
    }
 };
