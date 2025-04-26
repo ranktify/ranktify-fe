@@ -16,10 +16,10 @@ import {
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
-import { searchAndGetLinks } from "../utils/spotifySearch"; // Import spotifySearch
+import { searchAndGetLinks } from "../utils/spotifySearch";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
-const SWIPE_THRESHOLD = 0.25 * SCREEN_WIDTH;
+const SWIPE_THRESHOLD = 0.15 * SCREEN_WIDTH;
 const SWIPE_OUT_DURATION = 250;
 
 const STATUSBAR_HEIGHT = Platform.OS === "ios" ? 8 : StatusBar.currentHeight;
@@ -42,6 +42,7 @@ const SongSwiper = ({ navbarHeight = NAVBAR_HEIGHT }) => {
          imageUri: "",
          genre: "",
          audioUri: "",
+         rank: 0,
       },
       {
          id: "2",
@@ -52,6 +53,7 @@ const SongSwiper = ({ navbarHeight = NAVBAR_HEIGHT }) => {
          imageUri: "",
          genre: "Pop",
          audioUri: "",
+         rank: 0,
       },
       {
          id: "3",
@@ -62,6 +64,7 @@ const SongSwiper = ({ navbarHeight = NAVBAR_HEIGHT }) => {
          imageUri: "",
          genre: "",
          audioUri: "",
+         rank: 0,
       },
       {
          id: "4",
@@ -72,6 +75,7 @@ const SongSwiper = ({ navbarHeight = NAVBAR_HEIGHT }) => {
          imageUri: "",
          genre: "",
          audioUri: "",
+         rank: 0,
       },
       {
          id: "5",
@@ -82,6 +86,7 @@ const SongSwiper = ({ navbarHeight = NAVBAR_HEIGHT }) => {
          imageUri: "",
          genre: "",
          audioUri: "",
+         rank: 0,
       },
    ]);
 
@@ -95,6 +100,7 @@ const SongSwiper = ({ navbarHeight = NAVBAR_HEIGHT }) => {
    const [isLoading, setIsLoading] = useState(false);
    const [progress, setProgress] = useState(0);
    const [duration, setDuration] = useState(0);
+   const [currentRank, setCurrentRank] = useState(0);
 
    const [displaySong, setDisplaySong] = useState(songs[0]);
 
@@ -247,19 +253,31 @@ const SongSwiper = ({ navbarHeight = NAVBAR_HEIGHT }) => {
       }
    };
 
+   const calculateRankFromSwipe = (xPosition) => {
+      const maxSwipeDistance = SCREEN_WIDTH / 2;
+      const normalizedPosition = Math.max(0, Math.min(xPosition, maxSwipeDistance));
+      return Math.ceil((normalizedPosition / maxSwipeDistance) * 5);
+   };
+
    const panResponder = useRef(
       PanResponder.create({
          onStartShouldSetPanResponder: () => !isAnimating,
          onPanResponderMove: (_, gesture) => {
             position.setValue({ x: gesture.dx, y: gesture.dy });
+            if (gesture.dx > 0) {
+               const newRank = calculateRankFromSwipe(gesture.dx);
+               setCurrentRank(newRank);
+            }
          },
          onPanResponderRelease: (_, gesture) => {
-            if (gesture.dx > SWIPE_THRESHOLD) {
+            const swipeThreshold = gesture.vx > 0.1 ? SWIPE_THRESHOLD / 2 : SWIPE_THRESHOLD;            
+            if (gesture.dx > 0 && calculateRankFromSwipe(gesture.dx) > 0) {
                swipeRight();
             } else if (gesture.dx < -SWIPE_THRESHOLD) {
                swipeLeft();
             } else {
                resetPosition();
+               setCurrentRank(0);
             }
          },
       })
@@ -297,11 +315,14 @@ const SongSwiper = ({ navbarHeight = NAVBAR_HEIGHT }) => {
       if (currentIndex >= songs.length || isAnimating) return;
 
       setIsAnimating(true);
-
       triggerHapticFeedback(true);
 
-      const currentSong = songs[currentIndex];
+      const currentSong = {
+         ...songs[currentIndex],
+         rank: currentRank || calculateRankFromSwipe(position.x._value),
+      };
       setLikedSongs((prev) => [...prev, currentSong]);
+      setCurrentRank(0);
 
       Animated.timing(position, {
          toValue: { x: SCREEN_WIDTH + 100, y: 0 },
@@ -336,6 +357,11 @@ const SongSwiper = ({ navbarHeight = NAVBAR_HEIGHT }) => {
    };
 
    const handleButtonPress = () => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+   };
+
+   const handleRankChange = (value) => {
+      setCurrentRank(value);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
    };
 
@@ -424,6 +450,29 @@ const SongSwiper = ({ navbarHeight = NAVBAR_HEIGHT }) => {
                      )}
                   </View>
                </Animated.View>
+            </View>
+
+            <View style={styles.rankContainer}>
+               <Text style={styles.rankLabel}>Song Rank {currentRank > 0 ? `(${currentRank})` : ''}</Text>
+               <View style={styles.rankButtons}>
+                  {[1, 2, 3, 4, 5].map((value) => (
+                     <TouchableOpacity
+                        key={value}
+                        style={[
+                           styles.rankButton,
+                           currentRank === value && styles.rankButtonActive
+                        ]}
+                        onPress={() => handleRankChange(value)}
+                     >
+                        <Text style={[
+                           styles.rankButtonText,
+                           currentRank === value && styles.rankButtonTextActive
+                        ]}>
+                           {value}
+                        </Text>
+                     </TouchableOpacity>
+                  ))}
+               </View>
             </View>
 
             <View style={styles.buttonsContainer}>
@@ -660,6 +709,41 @@ const styles = StyleSheet.create({
       color: "white",
       fontSize: 16,
       fontWeight: "bold",
+   },
+   rankContainer: {
+      paddingHorizontal: 20,
+      marginBottom: 15,
+      alignItems: 'center',
+   },
+   rankLabel: {
+      fontSize: 16,
+      color: '#424242',
+      marginBottom: 8,
+   },
+   rankButtons: {
+      flexDirection: 'row',
+      gap: 8,
+   },
+   rankButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#f0f0f0',
+      borderWidth: 1,
+      borderColor: '#e0e0e0',
+   },
+   rankButtonActive: {
+      backgroundColor: '#6200ee',
+      borderColor: '#6200ee',
+   },
+   rankButtonText: {
+      fontSize: 16,
+      color: '#616161',
+   },
+   rankButtonTextActive: {
+      color: '#ffffff',
    },
 });
 
