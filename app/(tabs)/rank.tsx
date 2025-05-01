@@ -9,6 +9,7 @@ import {
   Text,
   Platform,
   StatusBar,
+  LogBox
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { searchAndGetLinks } from '@/utils/spotifySearch';
@@ -22,6 +23,10 @@ const initialSongsData: Omit<Song, 'id' | 'imageUri' | 'audioUri' | 'album'>[] =
   { title: 'MONACO', artist: 'Bad Bunny', year: '2025', genre: 'Reggaeton', rank: 0 },
   { title: 'NUEVAYoL', artist: 'Bad Bunny', year: '2025', genre: 'Reggaeton', rank: 0 },
 ];
+
+LogBox.ignoreLogs([
+  "Warning: useInsertionEffect must not schedule updates.",
+]);
 
 export default function RankPage() {
   const backgroundColor = useThemeColor({}, 'background');
