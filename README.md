@@ -31,26 +31,50 @@ Before running the app, ensure you have the following installed:
 
 ### Local Development
 
-To configure the app for local development, add the following to your `app.json` file:
+To configure the app for local development, you need to set the `baseURL` for the API calls and configure Spotify credentials in your `app.json` file.
+
+**Manual Configuration:**
+
+Add or modify the `extra` section in your `app.json`:
 
 ```json
 "extra": {
       "baseURL": "http://localhost:8080",
       "spotify": {
-        "clientId": "INSERT_CLIENT_ID", // Spotify API Client ID
-        "redirectUri": "exp://127.0.0.1:19000/" // Spotify API Redirect URI
+        "clientId": "INSERT_CLIENT_ID",
+        "redirectUri": "exp://127.0.0.1:19000/"
       }
     }
 ```
 
-To configure the app to communicate with deployed backend environment, add the following to your `app.json` file:
+**Automatic `baseURL` Update using Ngrok:**
+
+If your backend is running locally on port 8080 and you are using ngrok to expose it, you can automatically update the `baseURL` in `app.json`.
+
+1.  Ensure ngrok is running and forwarding port 8080:
+    ```bash
+    ngrok http 8080
+    ```
+2.  Run the update script:
+    ```bash
+    node scripts/update-config.js
+    ```
+
+With this command you can start ngrok, autoupdate the baseURL and run the application simultaneously. 
+```bash
+npm run start:ngrok
+```
+
+**Deployed Backend Configuration:**
+
+To configure the app to communicate with a deployed backend environment, update the `baseURL` accordingly:
 
 ```json
 "extra": {
     "baseURL": "*insert deployed environment link here*",
     "spotify": {
-        "clientId": "INSERT_CLIENT_ID", // Spotify API Client ID
-        "redirectUri": "exp://127.0.0.1:19000/" // Spotify API Redirect URI
+        "clientId": "INSERT_CLIENT_ID",
+        "redirectUri": "exp://127.0.0.1:19000/"
       }
     }
 ```
