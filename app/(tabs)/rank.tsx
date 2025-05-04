@@ -15,14 +15,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { searchAndGetLinks } from '@/utils/spotifySearch';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import SongSwiper, { Song } from '@/components/SongSwiper';
-
-const initialSongsData: Omit<Song, 'id' | 'imageUri' | 'audioUri' | 'album'>[] = [
-  { title: 'Otro Atardecer', artist: 'Bad Bunny, The Marías', year: '2025', genre: 'Trap', rank: 0 },
-  { title: 'PARANORMAL', artist: 'Tainy, Alvaro Diaz', year: '2025', genre: 'Pop', rank: 0 },
-  { title: 'DtMF', artist: 'Bad Bunny', year: '2025', genre: 'Reggaeton', rank: 0 },
-  { title: 'MONACO', artist: 'Bad Bunny', year: '2025', genre: 'Reggaeton', rank: 0 },
-  { title: 'NUEVAYoL', artist: 'Bad Bunny', year: '2025', genre: 'Reggaeton', rank: 0 },
-];
+import { getSpotifyToken } from '@/utils/spotifyAuth';
+import axiosInstance from '@/api/axiosInstance';
 
 LogBox.ignoreLogs([
   "Warning: useInsertionEffect must not schedule updates.",
@@ -39,40 +33,43 @@ export default function RankPage() {
   const startRankingSession = async () => {
     setIsFetchingSongs(true);
     try {
-      const fetched: Song[] = (
-        await Promise.all(
-          initialSongsData.map(async (s, idx) => {
-            const base: Song = {
-              id: `${idx}`,
-              title: s.title,
-              artist: s.artist,
-              album: '',
-              year: s.year,
-              imageUri: '',
-              genre: s.genre,
-              audioUri: '',
-              rank: 0,
-            };
-            const result = await searchAndGetLinks(s.title);
-            if (result.success && result.results.length) {
-              const track = result.results[0];
-              return {
-                ...base,
-                audioUri: track.audioUri ?? base.audioUri,
-                imageUri: track.image  ?? base.imageUri,
-                album:    track.album  ?? base.album,
-              };
-            }
-            return base;
-          })
-        )
-      ).filter(s => s.audioUri);
+      const token = await getSpotifyToken();
+      if (!token) {
+        Alert.alert('Authentication Required', 'Please connect your Spotify account in the Profile tab.');
+        return;
+      }
+      const limit = 5;
+      const response = await axiosInstance.get(`/song-recommendation/${limit}`, {
+        headers: { 'Spotify-Token': `Bearer ${token}` },
+      });
+      const recSongs = response.data['Recommended Songs'];
+      const fetched: Song[] = recSongs.map((s: any) => ({
+        id: `${s.song_id}`,
+        title: s.title,
+        artist: s.artist || '',
+        album: s.album || '',
+        year: s.release_date ? s.release_date.split('-')[0] : '',
+        imageUri: s.cover_uri || '',
+        genre: s.genre || '',
+        audioUri: s.preview_uri || '',
+        rank: 0,
+      }));
 
-      if (!fetched.length) {
+      const previewPromises = fetched.map((song) => searchAndGetLinks(song.title));
+      const previewResults = await Promise.all(previewPromises);
+      const enriched: Song[] = fetched.map((song, idx) => {
+        const result = previewResults[idx];
+        if (result?.success && result.results.length > 0) {
+          return { ...song, audioUri: result.results[0].audioUri || song.audioUri };
+        }
+        return song;
+      });
+
+      if (!enriched.length) {
         Alert.alert('Error', 'No songs could be loaded. Please try again.');
         return;
       }
-      setSongs(fetched);
+      setSongs(enriched);
       setIsRankingSessionActive(true);
     } catch (err) {
       console.error(err);
