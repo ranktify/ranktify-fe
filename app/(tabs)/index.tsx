@@ -16,10 +16,33 @@ export default function HomeScreen() {
           axiosInstance.get('/friends/top-tracks'),
           axiosInstance.get('/rankings/top-weekly')
         ]);
-        setTopFriendSongs(friendsResponse.data);
-        setTopWeeklySongs(weeklyResponse.data);
+
+        // Debug logging
+        console.log('Raw Friends Response:', friendsResponse);
+        console.log('Raw Weekly Response:', weeklyResponse);
+
+        // Ensure we're setting arrays, even if empty
+        const friendsSongs = Array.isArray(friendsResponse.data) ? friendsResponse.data : [];
+        const weeklySongs = Array.isArray(weeklyResponse.data) ? weeklyResponse.data : [];
+
+        console.log('Processed Friends Songs:', friendsSongs);
+        console.log('Processed Weekly Songs:', weeklySongs);
+
+        setTopFriendSongs(friendsSongs);
+        setTopWeeklySongs(weeklySongs);
+
       } catch (error) {
         console.error('Error fetching songs:', error);
+        if (error.response) {
+          console.error('Error response:', {
+            status: error.response.status,
+            data: error.response.data,
+            headers: error.response.headers
+          });
+        }
+        // Set empty arrays on error to prevent null mapping errors
+        setTopFriendSongs([]);
+        setTopWeeklySongs([]);
         Alert.alert('Error', 'Failed to load songs');
       } finally {
         setIsLoading(false);
@@ -105,8 +128,6 @@ export default function HomeScreen() {
                   <Text style={styles.artistText}>{song.artist}</Text>
                 </View>
                 <View style={styles.ratingContainer}>
-                  <Text style={styles.ratingText}>★ {song.avg_rank.toFixed(1)}</Text>
-                  <Text style={styles.ratingCount}>({song.rating_count})</Text>
                 </View>
               </TouchableOpacity>
             ))
