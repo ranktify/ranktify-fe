@@ -12,6 +12,7 @@ import {
    StatusBar,
    Dimensions,
    ActivityIndicator,
+   ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useThemeColor } from "@/hooks/useThemeColor";
@@ -211,9 +212,10 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
          <StatusBar barStyle={backgroundColor === "#fff" ? "dark-content" : "light-content"} />
          <KeyboardAvoidingView
             style={styles.container}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-         >
-            <View style={[styles.contentContainer, { paddingBottom: navbarHeight }]}>
+            behavior={Platform.OS === "ios" ? "padding" : undefined}>
+            <ScrollView
+               contentContainerStyle={[styles.contentContainer, { paddingBottom: navbarHeight }]}
+               keyboardShouldPersistTaps="handled">
                <View style={styles.headerContainer}>
                   <Text style={dynamicStyles.title}>Create an Account</Text>
                   <Text style={dynamicStyles.subtitle}>Sign up to get started</Text>
@@ -368,7 +370,7 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
                      Already have an account? <Text style={styles.loginLink}>Login</Text>
                   </Text>
                </TouchableOpacity>
-            </View>
+            </ScrollView>
          </KeyboardAvoidingView>
       </SafeAreaView>
    );
@@ -379,9 +381,9 @@ const styles = StyleSheet.create({
       flex: 1,
    },
    contentContainer: {
-      flex: 1,
       padding: 20,
       justifyContent: "flex-start",
+      flexGrow: 1,
    },
    headerContainer: {
       alignItems: "center",
