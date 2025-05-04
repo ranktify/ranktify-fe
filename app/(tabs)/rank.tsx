@@ -1,5 +1,9 @@
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, LogBox } from "react-native";
 import SongSwiper from "@/components/SongSwiper";
+
+LogBox.ignoreLogs([
+   "Warning: useInsertionEffect must not schedule updates.",
+]);
 
 export default function RankPage() {
    return (

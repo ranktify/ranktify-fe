@@ -3,20 +3,25 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+   ActivityIndicator,
 	Alert,
 	Button,
 	Platform,
+   SafeAreaView,
 	ScrollView,
 	StatusBar,
 	StyleSheet,
 	Text,
 	TouchableOpacity,
 	View,
+   Image,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../contexts/AuthContext";
 import { refreshSpotifyToken, useSpotifyAuth } from "../../utils/spotifyAuth";
+import SpotifyIcon from "@/assets/images/spotify-icon.png";
 
-const statusBarHeight = Platform.OS === "ios" ? 50 : StatusBar.currentHeight;
+const statusBarHeight = Platform.OS === "ios" ? 8 : StatusBar.currentHeight;
 
 export default function ProfileScreen() {
    const router = useRouter();
@@ -121,128 +126,128 @@ export default function ProfileScreen() {
       }
    };
 
-   if (loading) {
-      return (
-         <View style={[styles.loadingContainer, { backgroundColor }]}>
-            <Text style={[styles.loadingText, { color: textColor }]}>Loading...</Text>
-         </View>
-      );
-   }
-
-   if (!isAuthenticated || !user) {
-      return (
-         <View style={[styles.container, { backgroundColor }]}>
-            <View style={styles.welcomeContainer}>
-               <Text style={[styles.title, { color: textColor }]}>Welcome to Ranktify</Text>
-               <Text style={[styles.text, { color: textColor, marginBottom: 30 }]}>
-                  Please log in or sign up to continue
-               </Text>
-
-               <View style={styles.buttonContainer}>
-                  <Button
-                     title="Go to Login"
-                     onPress={() => router.push("/login")}
-                     color="#6200ee"
-                  />
-               </View>
-               <View style={styles.buttonContainer}>
-                  <Button
-                     title="Go to Signup"
-                     onPress={() => router.push("/signup")}
-                     color="#03DAC6"
-                  />
-               </View>
-            </View>
-         </View>
-      );
-   }
-
    const getInitials = () => {
       if (!user || !user.username) return "?";
       return user.username.charAt(0).toUpperCase();
    };
 
-   return (
-      <ScrollView style={[styles.container, { backgroundColor }]}>
-         <View style={styles.header}>
-            <View style={styles.profileHeader}>
-               <View style={styles.avatarContainer}>
-                  <View style={styles.avatar}>
-                     <Text style={styles.avatarText}>{getInitials()}</Text>
-                  </View>
-               </View>
-
-               <View style={styles.statsContainer}>
-                  <View style={styles.statItem}>
-                     <Text style={[styles.statNumber, { color: textColor }]}>0</Text>
-                     <Text
-                        style={[
-                           styles.statLabel,
-                           { color: backgroundColor === "#fff" ? "#999" : "#aaa" },
-                        ]}
-                     >
-                        Ranked
-                     </Text>
-                  </View>
-
-                  <View style={styles.statItem}>
-                     <Text style={[styles.statNumber, { color: textColor }]}>0</Text>
-                     <Text
-                        style={[
-                           styles.statLabel,
-                           { color: backgroundColor === "#fff" ? "#999" : "#aaa" },
-                        ]}
-                     >
-                        Lists
-                     </Text>
-                  </View>
-
-                  <View style={styles.statItem}>
-                     <Text style={[styles.statNumber, { color: textColor }]}>0</Text>
-                     <Text
-                        style={[
-                           styles.statLabel,
-                           { color: backgroundColor === "#fff" ? "#999" : "#aaa" },
-                        ]}
-                     >
-                        Shared
-                     </Text>
-                  </View>
-               </View>
+   if (loading) {
+      return (
+         <SafeAreaView style={{ flex: 1, backgroundColor }}>
+            <View style={[styles.loadingContainer, { backgroundColor }]}>
+               <ActivityIndicator size="large" color="#6200ee" />
+               <Text style={[styles.loadingText, { color: textColor }]}>Loading...</Text>
             </View>
+         </SafeAreaView>
+      );
+   }
 
-            <View style={styles.profileContainer}>
-               <Text style={[styles.label, { color: textColor }]}>Username</Text>
-               <Text style={[styles.info, { color: textColor }]}>{user.username}</Text>
-
-               <Text style={[styles.label, { color: textColor }]}>Email</Text>
-               <Text style={[styles.info, { color: textColor }]}>{user.email}</Text>
-
-               <Text style={[styles.label, { color: textColor }]}>User ID</Text>
-               <Text style={[styles.info, { color: textColor }]}>{user.userId}</Text>
-
-               <Text style={[styles.label, { color: textColor }]}>Spotify</Text>
-               <View style={styles.spotifyContainer}>
-                  <Text style={[styles.info, { color: textColor, marginBottom: 0 }]}>
-                     {spotifyUsername ? `Connected as ${spotifyUsername}` : "Not connected"}
+   if (!isAuthenticated || !user) {
+      return (
+         <SafeAreaView style={{ flex: 1, backgroundColor }}>
+            <View style={[styles.container, { backgroundColor }]}>
+               <View style={styles.headerContainer}>
+                  <Text style={[styles.title, { color: textColor }]}>Welcome to Ranktify</Text>
+                  <Text style={[styles.subtitle, { color: textColor }]}>
+                     Please log in or sign up to continue
                   </Text>
+               </View>
+
+               <View style={styles.formContainer}>
                   <TouchableOpacity
-                     style={[
-                        styles.spotifyButton,
-                        { backgroundColor: hasSpotifyToken ? "#1DB954" : "#1DB954" },
-                     ]}
-                     onPress={handleSpotifyConnect}
-                     disabled={isAuthenticating}
+                     style={styles.authButton}
+                     onPress={() => router.push("/login")}
                   >
-                     <Text style={styles.spotifyButtonText}>
-                        {isAuthenticating
-                           ? "Connecting..."
-                           : hasSpotifyToken
-                           ? "Disconnect Spotify"
-                           : "Connect Spotify"}
-                     </Text>
+                     <Text style={styles.authButtonText}>Go to Login</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                     style={[styles.authButton, { backgroundColor: "#03DAC6" }]}
+                     onPress={() => router.push("/signup")}
+                  >
+                     <Text style={styles.authButtonText}>Go to Signup</Text>
                   </TouchableOpacity>
                </View>
+            </View>
+         </SafeAreaView>
+      );
+   }
+
+   return (
+      <SafeAreaView style={{ flex: 1, backgroundColor }}>
+         <ScrollView style={[styles.container, { backgroundColor }]}>
+            <View style={styles.formContainer}>
+               {/* User Info Section */}
+               <View style={styles.section}>
+                  <View style={styles.userHeader}>
+                     <View style={styles.userInfo}>
+                        <View style={styles.avatar}>
+                           <Text style={styles.avatarText}>{getInitials()}</Text>
+                        </View>
+                        <View style={styles.userTextInfo}>
+                           <Text style={[styles.username, { color: textColor }]}>{user.username}</Text>
+                           <Text style={[styles.email, { color: textColor }]}>{user.email}</Text>
+                        </View>
+                     </View>
+                     <TouchableOpacity
+                        style={styles.logoutButton}
+                        onPress={handleLogout}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                     >
+                        <Ionicons name="log-out-outline" size={24} color={textColor} />
+                     </TouchableOpacity>
+                  </View>
+               </View>
+
+               {/* Stats Section */}
+               <View style={[styles.statsSection, { borderColor: backgroundColor === '#fff' ? '#eee' : '#333' }]}>
+                  <View style={styles.statItem}>
+                     <Text style={[styles.statNumber, { color: textColor }]}>0</Text>
+                     <Text style={[styles.statLabel, { color: textColor }]}>Ranked</Text>
+                  </View>
+                  <View style={[styles.statDivider, { backgroundColor: backgroundColor === '#fff' ? '#eee' : '#333' }]} />
+                  <View style={styles.statItem}>
+                     <Text style={[styles.statNumber, { color: textColor }]}>0</Text>
+                     <Text style={[styles.statLabel, { color: textColor }]}>Lists</Text>
+                  </View>
+                  <View style={[styles.statDivider, { backgroundColor: backgroundColor === '#fff' ? '#eee' : '#333' }]} />
+                  <View style={styles.statItem}>
+                     <Text style={[styles.statNumber, { color: textColor }]}>0</Text>
+                     <Text style={[styles.statLabel, { color: textColor }]}>Shared</Text>
+                  </View>
+               </View>
+
+               {/* Spotify Connection - Without header */}
+               <View style={styles.spotifySection}>
+                  <View style={[styles.spotifyCard, { backgroundColor: backgroundColor === '#fff' ? '#f5f5f5' : '#2a2a2a' }]}>
+                     <View style={styles.spotifyInfo}>
+                        <Image 
+                           source={SpotifyIcon} 
+                           style={[
+                              styles.spotifyStatusIcon,
+                              { opacity: hasSpotifyToken ? 1 : 0.5 }
+                           ]} 
+                        />
+                        <Text style={[styles.spotifyStatus, { color: textColor }]}>
+                           {spotifyUsername ? `Connected as ${spotifyUsername}` : "Not connected"}
+                        </Text>
+                     </View>
+                     <TouchableOpacity
+                        style={[
+                           styles.spotifyButton,
+                           hasSpotifyToken && styles.spotifyDisconnectButton
+                        ]}
+                        onPress={handleSpotifyConnect}
+                        disabled={isAuthenticating}
+                     >
+                        <Text style={styles.spotifyButtonText}>
+                           {isAuthenticating
+                              ? "Connecting..."
+                              : hasSpotifyToken
+                              ? "Disconnect"
+                              : "Connect"}
+                        </Text>
+                     </TouchableOpacity>
                {hasSpotifyToken && (
                   <View style={styles.buttonContainer}>
                      <Button
@@ -252,198 +257,190 @@ export default function ProfileScreen() {
                      />
                   </View>
                )}
-            </View>
-         </View>
+                  </View>
+               </View>
 
-         <View
-            style={[
-               styles.contentSection,
-               { borderTopColor: backgroundColor === "#fff" ? "#DBDBDB" : "#444" },
-            ]}
-         >
-            <View
-               style={[
-                  styles.sectionHeader,
-                  {
-                     borderBottomColor: backgroundColor === "#fff" ? "#DBDBDB" : "#444",
-                  },
-               ]}
-            >
-               <Text style={[styles.sectionTitle, { color: textColor }]}>Your Rankings</Text>
+               {/* Rankings Section */}
+               <View style={styles.section}>
+                  <Text style={[styles.sectionTitle, { color: textColor }]}>Your Rankings</Text>
+                  <Text style={[styles.emptyText, { color: textColor }]}>
+                     {hasSpotifyToken
+                        ? "You haven't ranked any songs yet."
+                        : "Connect your Spotify account to start ranking songs."}
+                  </Text>
+                  {hasSpotifyToken && (
+                     <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={() => router.push("/(tabs)/rank")}
+                     >
+                        <Text style={styles.actionButtonText}>Start Ranking</Text>
+                     </TouchableOpacity>
+                  )}
+               </View>
             </View>
-
-            <View style={styles.emptyContent}>
-               <Text style={[styles.text, { color: textColor }]}>
-                  {hasSpotifyToken
-                     ? "You haven't ranked any songs yet."
-                     : "Connect your Spotify account to start ranking songs."}
-               </Text>
-               {hasSpotifyToken ? (
-                  <TouchableOpacity
-                     style={styles.rankButton}
-                     onPress={() => router.push("/(tabs)/rank")}
-                  >
-                     <Text style={styles.rankButtonText}>Start Ranking</Text>
-                  </TouchableOpacity>
-               ) : (
-                  <TouchableOpacity
-                     style={styles.rankButton}
-                     onPress={handleSpotifyConnect}
-                     disabled={isAuthenticating}
-                  >
-                     <Text style={styles.rankButtonText}>
-                        {isAuthenticating ? "Connecting..." : "Connect Spotify"}
-                     </Text>
-                  </TouchableOpacity>
-               )}
-            </View>
-         </View>
-
-         <View style={styles.buttonContainer}>
-            <Button title="Logout" onPress={handleLogout} color="#6200ee" />
-         </View>
-      </ScrollView>
+         </ScrollView>
+      </SafeAreaView>
    );
 }
 
 const styles = StyleSheet.create({
    container: {
       flex: 1,
+      paddingHorizontal: 20,
       paddingTop: statusBarHeight,
    },
-   spotifyContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 20,
-   },
-   spotifyButton: {
-      backgroundColor: "#1DB954",
-      borderRadius: 20,
-      paddingVertical: 8,
-      paddingHorizontal: 15,
-   },
-   spotifyButtonText: {
-      color: "#fff",
-      fontWeight: "bold",
-      fontSize: 14,
-   },
-   loadingContainer: {
-      flex: 1,
-      paddingTop: statusBarHeight,
-      justifyContent: "center",
-      alignItems: "center",
-   },
-   loadingText: {
-      fontSize: 18,
-      textAlign: "center",
-   },
-   welcomeContainer: {
-      flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      padding: 20,
+   formContainer: {
+      width: '100%',
+      maxWidth: 400,
+      alignSelf: 'center',
    },
    title: {
       fontSize: 28,
       fontWeight: "bold",
       marginBottom: 8,
-      textAlign: "center",
    },
-   text: {
-      fontSize: 18,
-      textAlign: "center",
-   },
-   buttonContainer: {
-      width: "100%",
-      marginBottom: 15,
-      padding: 10,
-   },
-   header: {
-      padding: 20,
-   },
-   profileHeader: {
-      flexDirection: "row",
-      alignItems: "center",
+   subtitle: {
+      fontSize: 16,
       marginBottom: 20,
    },
-   avatarContainer: {
-      marginRight: 20,
+   loadingContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+   },
+   loadingText: {
+      fontSize: 16,
+      marginTop: 10,
+   },
+   section: {
+      marginBottom: 16, // Reduced margin
+   },
+   userHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 16, // Reduced margin
    },
    avatar: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
+      width: 72,
+      height: 72,
+      borderRadius: 36,
       backgroundColor: "#6200ee",
       justifyContent: "center",
       alignItems: "center",
    },
    avatarText: {
       color: "#fff",
-      fontSize: 32,
+      fontSize: 28,
       fontWeight: "bold",
    },
-   statsContainer: {
+   userInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
       flex: 1,
-      flexDirection: "row",
-      justifyContent: "space-around",
+   },
+   userTextInfo: {
+      marginLeft: 16,
+      flex: 1,
+   },
+   username: {
+      fontSize: 24,
+      fontWeight: "bold",
+      marginBottom: 4,
+   },
+   email: {
+      fontSize: 16,
+      opacity: 0.8,
+   },
+   statsSection: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 24,
+      marginTop: 8,
+      paddingVertical: 16,
+      borderTopWidth: 1,
+      borderBottomWidth: 1,
    },
    statItem: {
-      alignItems: "center",
+      flex: 1,
+      alignItems: 'center',
    },
    statNumber: {
-      fontSize: 18,
+      fontSize: 28,
       fontWeight: "bold",
+      marginBottom: 6,
    },
    statLabel: {
-      fontSize: 14,
-      color: "#999",
+      fontSize: 15,
+      opacity: 0.7,
    },
-   profileContainer: {
-      width: "100%",
-      marginBottom: 30,
-      padding: 5,
-   },
-   label: {
-      fontSize: 16,
-      fontWeight: "bold",
-      marginBottom: 5,
-   },
-   info: {
-      fontSize: 16,
-      marginBottom: 20,
-   },
-   contentSection: {
-      marginTop: 10,
-      borderTopWidth: 1,
-      borderTopColor: "#DBDBDB",
-   },
-   sectionHeader: {
-      flexDirection: "row",
-      justifyContent: "center",
-      padding: 15,
-      borderBottomWidth: 1,
-      borderBottomColor: "#DBDBDB",
+   statDivider: {
+      width: 1.5,
+      height: 36,
+      marginHorizontal: 4,
    },
    sectionTitle: {
-      fontSize: 16,
+      fontSize: 20,
       fontWeight: "600",
+      marginBottom: 16,
    },
-   emptyContent: {
-      padding: 30,
-      alignItems: "center",
-      justifyContent: "center",
+   spotifySection: {
+      marginBottom: 24,
    },
-   rankButton: {
-      backgroundColor: "#6200ee",
-      borderRadius: 5,
-      paddingVertical: 12,
-      paddingHorizontal: 20,
-      marginTop: 15,
+   spotifyCard: {
+      borderRadius: 12,
+      padding: 16,
    },
-   rankButtonText: {
-      color: "#fff",
-      fontWeight: "bold",
+   spotifyInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+      gap: 8,
+   },
+   spotifyStatusIcon: {
+      width: 20,
+      height: 20,
+      resizeMode: 'contain',
+   },
+   spotifyStatus: {
       fontSize: 16,
+      flex: 1,
+   },
+   spotifyButton: {
+      backgroundColor: "#1DB954",
+      paddingVertical: 12,
+      borderRadius: 8,
+      alignItems: 'center',
+   },
+   spotifyDisconnectButton: {
+      backgroundColor: "#ff6b6b",
+   },
+   spotifyButtonText: {
+      color: "#fff",
+      fontWeight: "600",
+      fontSize: 16,
+   },
+   emptyText: {
+      fontSize: 16,
+      textAlign: 'center',
+      marginBottom: 16,
+      opacity: 0.8,
+   },
+   actionButton: {
+      backgroundColor: "#6200ee",
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      borderRadius: 8,
+      alignSelf: 'center',
+   },
+   actionButtonText: {
+      color: "#fff",
+      fontWeight: "600",
+      fontSize: 16,
+   },
+   logoutButton: {
+      padding: 8,
+      marginLeft: 16,
    },
 });

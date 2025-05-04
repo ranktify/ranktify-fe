@@ -7,9 +7,20 @@ import { useEffect } from "react";
 import "react-native-reanimated";
 import { AuthProvider } from "../contexts/AuthContext";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { Audio } from "expo-av";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
+
+async function setupAudio() {
+   await Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      staysActiveInBackground: true,
+      playsInSilentModeIOS: true,
+      shouldDuckAndroid: true,
+      playThroughEarpieceAndroid: false,
+   });
+}
 
 export default function RootLayout() {
    const colorScheme = useColorScheme();
@@ -22,6 +33,10 @@ export default function RootLayout() {
          SplashScreen.hideAsync();
       }
    }, [loaded]);
+
+   useEffect(() => {
+      setupAudio();
+   }, []);
 
    if (!loaded) {
       return null;

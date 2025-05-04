@@ -16,66 +16,72 @@ import {
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
+import { searchAndGetLinks } from "../utils/spotifySearch"; // Import spotifySearch
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SWIPE_THRESHOLD = 0.25 * SCREEN_WIDTH;
 const SWIPE_OUT_DURATION = 250;
 
-const STATUSBAR_HEIGHT = Platform.OS === "ios" ? 20 : StatusBar.currentHeight;
+const STATUSBAR_HEIGHT = Platform.OS === "ios" ? 8 : StatusBar.currentHeight;
 const NAVBAR_HEIGHT = 56;
+
+const formatTime = (seconds) => {
+   const mins = Math.floor(seconds / 60);
+   const secs = Math.floor(seconds % 60);
+   return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+};
 
 const SongSwiper = ({ navbarHeight = NAVBAR_HEIGHT }) => {
    const [songs, setSongs] = useState([
       {
-         id: "1",
-         title: "Blinding Lights",
-         artist: "The Weeknd",
-         album: "After Hours",
-         year: "2020",
-         imageUri:
-            "https://upload.wikimedia.org/wikipedia/en/e/e6/The_Weeknd_-_Blinding_Lights.png",
-         genre: "Pop",
-         audioUri: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+         id: "0",
+         title: "Otro Atardecer",
+         artist: "Bad Bunny, The Marías",
+         album: "",
+         year: "2025",
+         imageUri: "",
+         genre: "",
+         audioUri: "",
       },
       {
          id: "2",
-         title: "Dance Monkey",
-         artist: "Tones and I",
-         album: "The Kids Are Coming",
-         year: "2019",
-         imageUri: "https://i.scdn.co/image/ab67616d0000b27338802659d156935ada63c9e3",
+         title: "PARANORMAL",
+         artist: "Tainy, Alvaro Diaz",
+         album: "",
+         year: "2025",
+         imageUri: "",
          genre: "Pop",
-         audioUri: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+         audioUri: "",
       },
       {
          id: "3",
-         title: "Bohemian Rhapsody",
-         artist: "Queen",
-         album: "A Night at the Opera",
-         year: "1975",
-         imageUri: "https://i.scdn.co/image/ab67616d0000b27328581cfe196c266c132a9d62",
-         genre: "Rock",
-         audioUri: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+         title: "DtMF",
+         artist: "Bad Bunny",
+         album: "",
+         year: "2025",
+         imageUri: "",
+         genre: "",
+         audioUri: "",
       },
       {
          id: "4",
-         title: "Sicko Mode",
-         artist: "Travis Scott",
-         album: "Astroworld",
-         year: "2018",
-         imageUri: "https://i.scdn.co/image/ab67616d00001e02072e9faef2ef7b6db63834a3",
-         genre: "Hip Hop",
-         audioUri: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+         title: "MONACO",
+         artist: "Bad Bunny",
+         album: "",
+         year: "2025",
+         imageUri: "",
+         genre: "",
+         audioUri: "",
       },
       {
          id: "5",
-         title: "Bad Guy",
-         artist: "Billie Eilish",
-         album: "When We All Fall Asleep, Where Do We Go?",
-         year: "2019",
-         imageUri: "https://i.scdn.co/image/ab67616d0000b27350a3147b4edd7701a876c6ce",
-         genre: "Pop",
-         audioUri: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+         title: "NUEVAYoL",
+         artist: "Bad Bunny",
+         album: "",
+         year: "2025",
+         imageUri: "",
+         genre: "",
+         audioUri: "",
       },
    ]);
 
@@ -87,8 +93,35 @@ const SongSwiper = ({ navbarHeight = NAVBAR_HEIGHT }) => {
    const [playbackStatus, setPlaybackStatus] = useState(null);
    const [sound, setSound] = useState(null);
    const [isLoading, setIsLoading] = useState(false);
+   const [progress, setProgress] = useState(0);
+   const [duration, setDuration] = useState(0);
 
    const [displaySong, setDisplaySong] = useState(songs[0]);
+
+   useEffect(() => {
+      const fetchSongDetails = async () => {
+         const updatedSongs = await Promise.all(
+            songs.map(async (song) => {
+               if (song.audioUri && song.imageUri && song.album) return song; // Skip if details exist
+
+               const searchResult = await searchAndGetLinks(song.title);
+               if (searchResult.success && searchResult.results.length > 0) {
+                  const track = searchResult.results[0];
+                  return {
+                     ...song,
+                     audioUri: track.audioUri || song.audioUri,
+                     imageUri: track.image || song.imageUri,
+                     album: track.album || song.album,
+                  };
+               }
+               return song;
+            })
+         );
+         setSongs(updatedSongs);
+      };
+
+      fetchSongDetails();
+   }, []); // Fetch details on component mount
 
    useEffect(() => {
       if (currentIndex < songs.length) {
@@ -124,11 +157,19 @@ const SongSwiper = ({ navbarHeight = NAVBAR_HEIGHT }) => {
    };
 
    const onPlaybackStatusUpdate = (status) => {
-      setPlaybackStatus(status);
       if (status.isLoaded) {
          setIsPlaying(status.isPlaying);
+         setProgress(status.positionMillis / 1000);
+         setDuration(status.durationMillis / 1000);
+         if (status.didJustFinish) {
+            setIsPlaying(false);
+            setProgress(0);
+         }
       } else {
          setIsPlaying(false);
+         if (status.error) {
+            console.error(`AUDIO ERROR: ${status.error}`);
+         }
       }
    };
 
@@ -356,15 +397,31 @@ const SongSwiper = ({ navbarHeight = NAVBAR_HEIGHT }) => {
 
                   <Image source={{ uri: displaySong.imageUri }} style={styles.image} />
                   <View style={styles.infoContainer}>
-                     <Text style={styles.title}>{displaySong.title}</Text>
-                     <Text style={styles.artist}>{displaySong.artist}</Text>
-                     <View style={styles.detailsRow}>
-                        <Text style={styles.album}>{displaySong.album}</Text>
-                        <Text style={styles.year}>{displaySong.year}</Text>
-                     </View>
-                     <View style={styles.genreContainer}>
-                        <Text style={styles.genre}>{displaySong.genre}</Text>
-                     </View>
+                     <Text style={styles.title} numberOfLines={2}>{displaySong.title}</Text>
+                     <Text style={styles.artist} numberOfLines={1}>{displaySong.artist}</Text>
+                     <Text style={styles.album} numberOfLines={1}>
+                        {displaySong.album} {displaySong.year ? `• ${displaySong.year}` : ''}
+                     </Text>
+                     {isPlaying && (
+                        <View style={styles.progressContainer}>
+                           <View style={styles.progressBar}>
+                              <View 
+                                 style={[
+                                    styles.progressFill, 
+                                    { width: `${(progress / duration) * 100}%` }
+                                 ]} 
+                              />
+                           </View>
+                           <Text style={styles.timeText}>
+                              {formatTime(duration - progress)}
+                           </Text>
+                        </View>
+                     )}
+                     {displaySong.genre && (
+                        <View style={styles.genreContainer}>
+                           <Text style={styles.genre}>{displaySong.genre}</Text>
+                        </View>
+                     )}
                   </View>
                </Animated.View>
             </View>
@@ -434,10 +491,20 @@ const styles = StyleSheet.create({
    cardContainer: {
       width: SCREEN_WIDTH * 0.85,
       height: SCREEN_WIDTH * 1.2,
-      borderRadius: 8,
-      backgroundColor: "white",
+      borderRadius: 16,
+      backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.8)' : 'white',
       overflow: "hidden",
       elevation: 4,
+      shadowColor: '#6200ee',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.1,
+      shadowRadius: 10,
+      ...Platform.select({
+         ios: {
+            borderWidth: 1,
+            borderColor: 'rgba(98, 0, 238, 0.05)',
+         }
+      })
    },
    image: {
       width: "100%",
@@ -452,31 +519,46 @@ const styles = StyleSheet.create({
       fontSize: 22,
       fontWeight: "bold",
       color: "#212121",
+      marginBottom: 8,
    },
    artist: {
       fontSize: 18,
       color: "#424242",
-      marginTop: 4,
-   },
-   detailsRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      marginTop: 8,
+      marginBottom: 12,
    },
    album: {
       fontSize: 16,
       color: "#616161",
+      marginBottom: 12,
    },
-   year: {
-      fontSize: 16,
-      color: "#757575",
+   progressContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 12,
+      gap: 8,
+   },
+   progressBar: {
+      flex: 1,
+      height: 3,
+      backgroundColor: '#e0e0e0',
+      borderRadius: 1.5,
+      overflow: 'hidden',
+   },
+   progressFill: {
+      height: '100%',
+      backgroundColor: '#6200ee',
+   },
+   timeText: {
+      fontSize: 12,
+      color: '#616161',
+      minWidth: 45,
+      textAlign: 'right',
    },
    genreContainer: {
       backgroundColor: "#e0e0e0",
       borderRadius: 16,
-      padding: 6,
+      paddingVertical: 6,
       paddingHorizontal: 12,
-      marginTop: 10,
       alignSelf: "flex-start",
    },
    genre: {
@@ -496,6 +578,10 @@ const styles = StyleSheet.create({
       justifyContent: "center",
       alignItems: "center",
       elevation: 3,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
    },
    dislikeButton: {
       backgroundColor: "#ff5252",
