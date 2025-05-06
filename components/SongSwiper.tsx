@@ -12,13 +12,19 @@ import {
    StatusBar,
    Platform,
    Alert,
+   Linking,
+   Modal,
+   TextInput,
 } from "react-native";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { Audio, AVPlaybackStatus } from "expo-av";
 import * as Haptics from "expo-haptics";
+import * as WebBrowser from 'expo-web-browser';
+const SpotifyIcon = require('../assets/images/spotify-icon.png');
 import { useThemeColor } from "@/hooks/useThemeColor";
 import axiosInstance from '@/api/axiosInstance';
 import { storage } from '@/utils/storage';
+import { createPlaylist, addTracksToPlaylist, getSpotifyUserProfile } from '@/utils/spotifyApi';
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SWIPE_THRESHOLD = 0.15 * SCREEN_WIDTH;
@@ -35,6 +41,7 @@ export interface Song {
   genre: string;
   audioUri: string;
   rank: number;
+  spotifyUrl?: string;
   recommendedByUserId?: number | null;
 }
 
@@ -63,6 +70,7 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
   const borderColor = useThemeColor({}, 'border');
   const primaryColor = useThemeColor({}, 'primary');
   const secondaryColor = useThemeColor({}, 'secondary');
+  const inputBackground = useThemeColor({}, 'inputBackground');
 
   const friendMap = useMemo(() => {
     const m: Record<number, string> = {};
@@ -84,6 +92,9 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentRank, setCurrentRank] = useState(0);
+
+  const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
+  const [playlistNameSuffix, setPlaylistNameSuffix] = useState('');
 
   const [displaySong, setDisplaySong] = useState(songsProp[0]);
   const currentIndexRef = useRef(currentIndex);
@@ -310,6 +321,38 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   const handleRankChange = (v: number) => setCurrentRank(v);
 
+  const openInSpotify = async () => {
+    const url = displaySong.spotifyUrl;
+    if (!url) return;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) await Linking.openURL(url);
+      else await WebBrowser.openBrowserAsync(url);
+    } catch (e) {
+      console.error('Error opening Spotify URL', e);
+    }
+  };
+
+  const doCreatePlaylist = async (suffix: string) => {
+    try {
+      const profile = await getSpotifyUserProfile();
+      const spotifyUserId = profile.id;
+      const name = `Ranktify Picks - ${suffix}`;
+      const resp = await createPlaylist(spotifyUserId, name, 'Your top songs from Ranktify', true);
+      const playlistId = resp.id;
+      const uris = likedSongs.map(s => {
+        const parts = s.spotifyUrl?.split('/track/')[1] || '';
+        const trackId = parts.split('?')[0];
+        return `spotify:track:${trackId}`;
+      }).filter(uri => uri);
+      if (uris.length) await addTracksToPlaylist(playlistId, uris);
+      Alert.alert('Playlist Created', 'Your Spotify playlist has been created.');
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to create Spotify playlist.');
+    }
+  };
+
   if (currentIndex >= songsProp.length) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor }]}>
@@ -322,18 +365,57 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
             <Text style={[styles.endCardSubText, { color: secondaryColor }]}>
               You liked {likedSongs.length} songs
             </Text>
-            <TouchableOpacity
-              style={[styles.restartButton, { backgroundColor: primaryColor }]}
-              onPress={() => {
-                handleButtonPress();
-                if (sound) stopSound();
-                onRankingComplete();
-              }}
-            >
-              <Text style={styles.restartButtonText}>Rank Again</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', marginTop: 20 }}>
+              <TouchableOpacity
+                style={[styles.restartButton, { backgroundColor: primaryColor, marginTop: 0 }]}
+                onPress={() => {
+                  handleButtonPress();
+                  if (sound) stopSound();
+                  onRankingComplete();
+                }}
+              >
+                <Text style={styles.restartButtonText}>Rank Again</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.restartButton, { backgroundColor: '#1DB954', marginLeft: 10, marginTop: 0 }]}
+                onPress={() => {
+                  handleButtonPress();
+                  setPlaylistModalVisible(true);
+                }}
+              >
+                <Text style={styles.restartButtonText}>Add to Spotify</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
+        <Modal transparent visible={playlistModalVisible} animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContainer, { backgroundColor: cardBackgroundColor }]}>              
+              <Text style={[styles.modalTitle, { color: textColor }]}>Enter playlist name:</Text>
+              <TextInput
+                placeholder="My Beats"
+                placeholderTextColor={secondaryColor}
+                value={playlistNameSuffix}
+                onChangeText={setPlaylistNameSuffix}
+                style={[styles.modalInput, { backgroundColor: inputBackground, borderColor, color: textColor }]}
+              />
+              <View style={styles.modalButtonRow}>
+                <TouchableOpacity
+                  style={styles.modalButton}
+                  onPress={() => { setPlaylistModalVisible(false); setPlaylistNameSuffix(''); }}
+                >
+                  <Text style={{ color: primaryColor }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: primaryColor }]}
+                  onPress={() => { doCreatePlaylist(playlistNameSuffix); setPlaylistModalVisible(false); setPlaylistNameSuffix(''); }}
+                >
+                  <Text style={{ color: '#fff' }}>Create</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     );
   }
@@ -399,13 +481,25 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
               style={[styles.image, { opacity: imageOpacity }]}
             />
             <View style={[styles.infoContainer, { backgroundColor: cardBackgroundColor }]}>
-              <Text style={[styles.title, { color: textColor }]} numberOfLines={2}>
+              <Text
+                style={[styles.title, { color: textColor }]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
                 {displaySong.title}
               </Text>
-              <Text style={[styles.artist, { color: secondaryColor }]} numberOfLines={1}>
+              <Text
+                style={[styles.artist, { color: secondaryColor }]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
                 {displaySong.artist}
               </Text>
-              <Text style={[styles.album, { color: secondaryColor }]} numberOfLines={1}>
+              <Text
+                style={[styles.album, { color: secondaryColor }]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
                 {displaySong.album} {displaySong.year ? `• ${displaySong.year}` : ''}
               </Text>
               {displaySong.genre && (
@@ -430,6 +524,13 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
                 </Text>
               </View>
             </View>
+            <TouchableOpacity
+              style={{ position: 'absolute', bottom: 16, right: 16, zIndex: 10 }}
+              onPress={openInSpotify}
+              disabled={!displaySong.spotifyUrl}
+            >
+              <Image source={SpotifyIcon} style={{ width: 24, height: 24 }} />
+            </TouchableOpacity>
           </Animated.View>
         </View>
 
@@ -692,6 +793,40 @@ const styles = StyleSheet.create({
   friendBadgeText: {
     color: 'white',
     fontSize: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '80%',
+    borderRadius: 16,
+    padding: 20,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 16,
+  },
+  modalButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  modalButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginLeft: 12,
   },
 });
 

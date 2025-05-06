@@ -86,6 +86,7 @@ export default function RankPage() {
         audioUri: s.preview_uri || '',
         rank: 0,
         recommendedByUserId: null,
+        spotifyUrl: '',
       }));
       const friendsFetched: Song[] = friendsSongs.map((s: any) => ({
         id: `${s.song_id}`,
@@ -98,6 +99,7 @@ export default function RankPage() {
         audioUri: s.preview_uri || '',
         rank: 0,
         recommendedByUserId: s.user_id,
+        spotifyUrl: '',
       }));
       const fetched: Song[] = [...recFetched, ...friendsFetched];
 
@@ -106,7 +108,10 @@ export default function RankPage() {
       const enriched: Song[] = fetched.map((song, idx) => {
         const result = previewResults[idx];
         if (result?.success && result.results.length > 0) {
-          return { ...song, audioUri: result.results[0].audioUri || song.audioUri };
+          return { ...song,
+            audioUri: result.results[0].audioUri || song.audioUri,
+            spotifyUrl: result.results[0].spotifyUrl || song.spotifyUrl
+          };
         }
         return song;
       });
