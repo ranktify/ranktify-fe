@@ -205,10 +205,17 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
         if (g.dx > 0) setCurrentRank(calculateRankFromSwipe(g.dx));
       },
       onPanResponderRelease: (_, g) => {
-        const threshold = g.vx > 0.1 ? SWIPE_THRESHOLD / 2 : SWIPE_THRESHOLD;
-        if (g.dx > 0 && calculateRankFromSwipe(g.dx) > 0) swipeRight();
-        else if (g.dx < -SWIPE_THRESHOLD) swipeLeft();
-        else {
+        const baseThreshold = SWIPE_THRESHOLD;
+        const threshold = g.vx > 0.1 ? baseThreshold / 2 : baseThreshold;
+        const smallThreshold = baseThreshold / 4;
+        const swipeRank = calculateRankFromSwipe(g.dx);
+        if (g.dx > smallThreshold && swipeRank === 1) {
+          swipeRight(1);
+        } else if (g.dx > threshold && swipeRank > 1) {
+          swipeRight(swipeRank);
+        } else if (g.dx < -baseThreshold) {
+          swipeLeft();
+        } else {
           resetPosition();
           setCurrentRank(0);
         }
@@ -240,11 +247,11 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
     });
   };
 
-  const swipeRight = async () => {
+  const swipeRight = async (rank: number) => {
     if (currentIndexRef.current >= songsProp.length || isAnimating) return;
     setIsAnimating(true);
     triggerHapticFeedback(true);
-    const rank = currentRank > 0 ? currentRank : 1;
+    const rankToSend = rank;
     const songIdNum = parseInt(songsProp[currentIndexRef.current].id, 10);
     if (isNaN(songIdNum)) {
       console.error('Invalid song ID for ranking:', songsProp[currentIndexRef.current].id);
@@ -262,13 +269,13 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
         console.error('No user_info found in storage');
       }
       axiosInstance.post(
-        `/rankings/${songIdNum}/${rank}`,
+        `/rankings/${songIdNum}/${rankToSend}`,
         { userId }
       )
       .then((res) => console.log('Rank published:', res.status))
       .catch((error) => console.error('Error publishing rank', error.response?.data || error));
     }
-    setLikedSongs((prev) => [...prev, { ...songsProp[currentIndexRef.current], rank }]);
+    setLikedSongs((prev) => [...prev, { ...songsProp[currentIndexRef.current], rank: rankToSend }]);
     setCurrentRank(0);
     Animated.timing(position, {
       toValue: { x: SCREEN_WIDTH + 100, y: 0 },
@@ -289,8 +296,9 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
     }).start(transitionToNextCard);
   };
 
-  const handleLike = () => swipeRight();
-  const handleDislike = () => swipeLeft();
+  const handleLike = () => swipeRight(5);
+
+  const handleDislike = () => swipeRight(1);
   const handleButtonPress = () =>
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   const handleRankChange = (v: number) => setCurrentRank(v);
