@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { useEffect, useState } from "react";
 import axiosInstance from "@/api/axiosInstance";
+import { useNotifications } from '@/components/NotificationContext';
 
 interface FriendRequest {
   request_id: number;
@@ -23,9 +24,16 @@ export default function NotificationsScreen() {
   const [responseData, setResponseData] = useState<ResponseData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userNames, setUserNames] = useState<{[key: number]: string}>({});
+  const { setNotificationCount, refreshNotifications } = useNotifications();
 
   useEffect(() => {
     fetchFriendRequests();
+    // Set up a refresh interval (optional)
+    const interval = setInterval(() => {
+      refreshNotifications();
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(interval);
   }, []);
 
   const fetchUserName = async (userId: number) => {
@@ -45,6 +53,8 @@ export default function NotificationsScreen() {
     try {
       const response = await axiosInstance.get('/friends/friend-requests');
       setResponseData(response.data);
+      // Set the notification count
+      setNotificationCount(response.data.friend_request_count);
       // Fetch names for all senders
       response.data.friend_request.forEach((request: FriendRequest) => {
         fetchUserName(request.sender_id);
@@ -61,7 +71,7 @@ export default function NotificationsScreen() {
       await axiosInstance.post(
         `/friends/accept/${request.request_id}/${request.sender_id}/${request.receiver_id}`
       );
-      fetchFriendRequests();
+      await fetchFriendRequests(); // This will update the notification count
     } catch (error) {
       console.error('Error accepting request:', error);
     }
@@ -72,7 +82,7 @@ export default function NotificationsScreen() {
       await axiosInstance.delete(
         `/friends/decline/${request.request_id}/${request.sender_id}/${request.receiver_id}`
       );
-      fetchFriendRequests();
+      await fetchFriendRequests(); // This will update the notification count
     } catch (error) {
       console.error('Error denying request:', error);
     }
