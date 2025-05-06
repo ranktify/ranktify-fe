@@ -89,10 +89,18 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
   const currentIndexRef = useRef(currentIndex);
   useEffect(() => { currentIndexRef.current = currentIndex; }, [currentIndex]);
 
+  const position = useRef(new Animated.ValueXY()).current;
+  // animate image opacity for crossfade on song change
+  const imageOpacity = useRef(new Animated.Value(1)).current;
+
+  // fade out current image, switch song, then fade image in
   useEffect(() => {
     if (currentIndex < songsProp.length) {
-      setDisplaySong(songsProp[currentIndex]);
-      if (sound) stopSound();
+      Animated.timing(imageOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+        setDisplaySong(songsProp[currentIndex]);
+        if (sound) stopSound();
+        Animated.timing(imageOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+      });
     }
   }, [currentIndex, songsProp]);
 
@@ -166,7 +174,6 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
     };
   }, [sound]);
 
-  const position = useRef(new Animated.ValueXY()).current;
   const rotation = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
     outputRange: ['-10deg', '0deg', '10deg'],
@@ -386,11 +393,10 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
               <Text style={styles.dislikeText}>NOPE</Text>
             </Animated.View>
 
-            <Image
-              source={{
-                uri: displaySong.imageUri,
-              }}
-              style={styles.image}
+            {/* crossfading song image */}
+            <Animated.Image
+              source={{ uri: displaySong.imageUri }}
+              style={[styles.image, { opacity: imageOpacity }]}
             />
             <View style={[styles.infoContainer, { backgroundColor: cardBackgroundColor }]}>
               <Text style={[styles.title, { color: textColor }]} numberOfLines={2}>
