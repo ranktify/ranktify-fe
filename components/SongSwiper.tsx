@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
    View,
    Text,
@@ -17,6 +17,8 @@ import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { Audio, AVPlaybackStatus } from "expo-av";
 import * as Haptics from "expo-haptics";
 import { useThemeColor } from "@/hooks/useThemeColor";
+import axiosInstance from '@/api/axiosInstance';
+import { storage } from '@/utils/storage';
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SWIPE_THRESHOLD = 0.15 * SCREEN_WIDTH;
@@ -33,10 +35,12 @@ export interface Song {
   genre: string;
   audioUri: string;
   rank: number;
+  recommendedByUserId?: number | null;
 }
 
 export interface SongSwiperProps {
   songs: Song[];
+  friendsList: any[];
   navbarHeight?: number;
   onRankingComplete: () => void;
 }
@@ -49,6 +53,7 @@ const formatTime = (seconds: number): string => {
 
 const SongSwiper: React.FC<SongSwiperProps> = ({
   songs: songsProp,
+  friendsList,
   onRankingComplete,
   navbarHeight = NAVBAR_HEIGHT,
 }) => {
@@ -58,6 +63,16 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
   const borderColor = useThemeColor({}, 'border');
   const primaryColor = useThemeColor({}, 'primary');
   const secondaryColor = useThemeColor({}, 'secondary');
+
+  const friendMap = useMemo(() => {
+    const m: Record<number, string> = {};
+    friendsList.forEach((f) => {
+      if (f.id != null && f.username) {
+        m[f.id] = f.username;
+      }
+    });
+    return m;
+  }, [friendsList]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [likedSongs, setLikedSongs] = useState<Song[]>([]);
@@ -71,6 +86,8 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
   const [currentRank, setCurrentRank] = useState(0);
 
   const [displaySong, setDisplaySong] = useState(songsProp[0]);
+  const currentIndexRef = useRef(currentIndex);
+  useEffect(() => { currentIndexRef.current = currentIndex; }, [currentIndex]);
 
   useEffect(() => {
     if (currentIndex < songsProp.length) {
@@ -101,8 +118,8 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
   const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
     if (status.isLoaded) {
       setIsPlaying(status.isPlaying);
-      setProgress(status.positionMillis / 1000);
-      setDuration(status.durationMillis / 1000);
+      setProgress((status.positionMillis ?? 0) / 1000);
+      setDuration((status.durationMillis ?? 0) / 1000);
       if (status.didJustFinish) {
         setIsPlaying(false);
         setProgress(0);
@@ -223,12 +240,35 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
     });
   };
 
-  const swipeRight = () => {
-    if (currentIndex >= songsProp.length || isAnimating) return;
+  const swipeRight = async () => {
+    if (currentIndexRef.current >= songsProp.length || isAnimating) return;
     setIsAnimating(true);
     triggerHapticFeedback(true);
     const rank = currentRank > 0 ? currentRank : 1;
-    setLikedSongs((prev) => [...prev, { ...songsProp[currentIndex], rank }]);
+    const songIdNum = parseInt(songsProp[currentIndexRef.current].id, 10);
+    if (isNaN(songIdNum)) {
+      console.error('Invalid song ID for ranking:', songsProp[currentIndexRef.current].id);
+    } else {
+      const userInfoStr = await storage.getItem('user_info');
+      let userId = null;
+      if (userInfoStr) {
+        try {
+          const parsed = JSON.parse(userInfoStr);
+          userId = parsed.userId;
+        } catch {
+          console.error('Failed to parse user_info');
+        }
+      } else {
+        console.error('No user_info found in storage');
+      }
+      axiosInstance.post(
+        `/rankings/${songIdNum}/${rank}`,
+        { userId }
+      )
+      .then((res) => console.log('Rank published:', res.status))
+      .catch((error) => console.error('Error publishing rank', error.response?.data || error));
+    }
+    setLikedSongs((prev) => [...prev, { ...songsProp[currentIndexRef.current], rank }]);
     setCurrentRank(0);
     Animated.timing(position, {
       toValue: { x: SCREEN_WIDTH + 100, y: 0 },
@@ -303,6 +343,15 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
             ]}
             {...panResponder.panHandlers}
           >
+            {displaySong.recommendedByUserId != null && (
+              <View style={styles.friendBadge}>
+                <Text style={styles.friendBadgeText}>{
+                  `Recommended from ${
+                    friendMap[displaySong.recommendedByUserId] ?? `user ${displaySong.recommendedByUserId}`
+                  }`
+                }</Text>
+              </View>
+            )}
             <Animated.View
               style={[
                 styles.likeContainer,
@@ -616,6 +665,20 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   rankButtonText: { fontSize: 18, fontWeight: '600' },
+  friendBadge: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    zIndex: 20,
+  },
+  friendBadgeText: {
+    color: 'white',
+    fontSize: 12,
+  },
 });
 
 export default SongSwiper;

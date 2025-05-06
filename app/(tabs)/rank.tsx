@@ -17,6 +17,7 @@ import { useThemeColor } from '@/hooks/useThemeColor';
 import SongSwiper, { Song } from '@/components/SongSwiper';
 import { getSpotifyToken } from '@/utils/spotifyAuth';
 import axiosInstance from '@/api/axiosInstance';
+import storage from '@/utils/storage';
 
 LogBox.ignoreLogs([
   "Warning: useInsertionEffect must not schedule updates.",
@@ -29,6 +30,7 @@ export default function RankPage() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [isRankingSessionActive, setIsRankingSessionActive] = useState(false);
   const [isFetchingSongs, setIsFetchingSongs] = useState(false);
+  const [friendsList, setFriendsList] = useState<any[]>([]);
 
   const startRankingSession = async () => {
     setIsFetchingSongs(true);
@@ -43,7 +45,34 @@ export default function RankPage() {
         headers: { 'Spotify-Token': `Bearer ${token}` },
       });
       const recSongs = response.data['Recommended Songs'];
-      const fetched: Song[] = recSongs.map((s: any) => ({
+      const friendsSongs = response.data['Songs From Friends'];
+      console.log('Recommended Songs:', recSongs);
+      console.log('Songs From Friends:', friendsSongs);
+
+      const userInfoStr = await storage.getItem('user_info');
+      let currentUserId: number | null = null;
+      if (userInfoStr) {
+        try {
+          const parsed = JSON.parse(userInfoStr);
+          currentUserId = parsed.userId;
+        } catch {
+          console.error('Failed to parse user_info');
+        }
+      } else {
+        console.error('No user_info found in storage');
+      }
+
+      if (currentUserId) {
+        try {
+          const resp = await axiosInstance.get(`/friends/${currentUserId}`);
+          const friends = resp.data?.friends ?? [];
+          setFriendsList(friends);
+        } catch (err) {
+          console.error('Error fetching friends list', err);
+        }
+      }
+
+      const recFetched: Song[] = recSongs.map((s: any) => ({
         id: `${s.song_id}`,
         title: s.title,
         artist: s.artist || '',
@@ -53,7 +82,21 @@ export default function RankPage() {
         genre: s.genre || '',
         audioUri: s.preview_uri || '',
         rank: 0,
+        recommendedByUserId: null,
       }));
+      const friendsFetched: Song[] = friendsSongs.map((s: any) => ({
+        id: `${s.song_id}`,
+        title: s.title,
+        artist: s.artist || '',
+        album: s.album || '',
+        year: s.release_date ? s.release_date.split('-')[0] : '',
+        imageUri: s.cover_uri || '',
+        genre: s.genre || '',
+        audioUri: s.preview_uri || '',
+        rank: 0,
+        recommendedByUserId: s.user_id,
+      }));
+      const fetched: Song[] = [...recFetched, ...friendsFetched];
 
       const previewPromises = fetched.map((song) => searchAndGetLinks(song.title));
       const previewResults = await Promise.all(previewPromises);
@@ -87,7 +130,11 @@ export default function RankPage() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor }]}>
       {isRankingSessionActive ? (
-        <SongSwiper songs={songs} onRankingComplete={handleRankingComplete} />
+        <SongSwiper
+          songs={songs}
+          friendsList={friendsList}
+          onRankingComplete={handleRankingComplete}
+        />
       ) : (
         <View style={styles.onboardingContainer}>
           <MaterialIcons name="queue-music" size={64} color={textColor} />
