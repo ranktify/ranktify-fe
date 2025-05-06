@@ -27,13 +27,8 @@ export default function NotificationsScreen() {
   const { setNotificationCount, refreshNotifications } = useNotifications();
 
   useEffect(() => {
+    // Only fetch when the notifications screen mounts
     fetchFriendRequests();
-    // Set up a refresh interval (optional)
-    const interval = setInterval(() => {
-      refreshNotifications();
-    }, 30000); // Check every 30 seconds
-
-    return () => clearInterval(interval);
   }, []);
 
   const fetchUserName = async (userId: number) => {
@@ -54,13 +49,18 @@ export default function NotificationsScreen() {
       const response = await axiosInstance.get('/friends/friend-requests');
       setResponseData(response.data);
       // Set the notification count
-      setNotificationCount(response.data.friend_request_count);
-      // Fetch names for all senders
-      response.data.friend_request.forEach((request: FriendRequest) => {
-        fetchUserName(request.sender_id);
-      });
+      setNotificationCount(response.data.friend_request_count || 0);
+      // Fetch names for all senders if there are any requests
+      if (response.data.friend_request && response.data.friend_request.length > 0) {
+        response.data.friend_request.forEach((request: FriendRequest) => {
+          fetchUserName(request.sender_id);
+        });
+      }
     } catch (error) {
       console.error('Error:', error);
+      // Set default values in case of error
+      setResponseData({ friend_request: [], friend_request_count: 0 });
+      setNotificationCount(0);
     } finally {
       setIsLoading(false);
     }
