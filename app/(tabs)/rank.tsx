@@ -44,8 +44,11 @@ export default function RankPage() {
       const response = await axiosInstance.get(`/song-recommendation/${limit}`, {
         headers: { 'Spotify-Token': `Bearer ${token}` },
       });
-      const recSongs = response.data['Recommended Songs'];
-      const friendsSongs = response.data['Songs From Friends'];
+      const recSongsRaw = response.data['Recommended Songs'];
+      const friendsSongsRaw = response.data['Songs From Friends'];
+      
+      const recSongs = Array.isArray(recSongsRaw) ? recSongsRaw : [];
+      const friendsSongs = Array.isArray(friendsSongsRaw) ? friendsSongsRaw : [];
       console.log('Recommended Songs:', recSongs);
       console.log('Songs From Friends:', friendsSongs);
 
