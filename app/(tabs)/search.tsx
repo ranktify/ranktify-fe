@@ -574,12 +574,12 @@ const styles = StyleSheet.create({
       flexDirection: "row",
       justifyContent: "space-between",
       marginBottom: 16,
-      gap: 8,
+      gap: 6,
    },
    toggleButton: {
       flex: 1,
       backgroundColor: "#cccccc",
-      height: 56,
+      height: 48,
       borderRadius: 8,
       alignItems: "center",
       justifyContent: "center",
@@ -589,18 +589,19 @@ const styles = StyleSheet.create({
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.2,
       shadowRadius: 1.41,
-      gap: 4, 
+      paddingHorizontal: 8,
    },
    activeToggle: {
       backgroundColor: "#6200ee",
    },
    toggleIcon: {
-      marginRight: 2, 
+      marginRight: 4,
    },
    toggleText: {
       color: "white",
       fontWeight: "bold",
-      fontSize: 14,
+      fontSize: 11,
+      letterSpacing: 0.5,
    },
    searchButton: {
       padding: 8,

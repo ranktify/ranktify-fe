@@ -67,7 +67,7 @@ export default function ProfileScreen() {
             console.log("No user ID available");
          }
       } catch (error) {
-         console.error("Error fetching friends:", error);
+         console.log("Error fetching friends:", error);
          setFriendCount(0);
          setFriends([]);
       }
