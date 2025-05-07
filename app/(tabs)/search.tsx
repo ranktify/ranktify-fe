@@ -39,6 +39,12 @@ const SpotifyAPI = {
 };
 
 export default function SearchScreen() {
+   const backgroundColor = useThemeColor({}, "background");
+   const cardBackgroundColor = useThemeColor({}, "secondaryBackground");
+   const borderColor = useThemeColor({}, "border");
+   const textColor = useThemeColor({}, "text");
+   const secondaryColor = useThemeColor({}, "secondary");
+
    const [query, setQuery] = useState("");
    const [spotifyToken, setSpotifyToken] = useState<string | null>(null);
    const [results, setResults] = useState<any[]>([]);
@@ -50,10 +56,6 @@ export default function SearchScreen() {
    const [isPlaying, setIsPlaying] = useState(false);
    const [isLoading, setIsLoading] = useState(false);
    const [sentRequests, setSentRequests] = useState<Set<string>>(new Set());
-
-   const textColor = useThemeColor({}, "text");
-   const backgroundColor = useThemeColor({}, "background");
-   const titleColor = useThemeColor({}, "text");
 
    useEffect(() => {
       const fetchToken = async () => {
@@ -97,7 +99,6 @@ export default function SearchScreen() {
                }));
                setResults(removeDuplicates(processedResults));
             } catch (error) {
-               console.error("User search error:", error);
                if (error.response?.status !== 404) {
                   Alert.alert("Error", "Failed to search users");
                } else {
@@ -324,7 +325,15 @@ export default function SearchScreen() {
          const hasRequestBeenSent = sentRequests.has(item.id);
          
          return (
-            <View style={styles.card}>
+            <View style={[
+               styles.card,
+               { 
+                  backgroundColor: Platform.OS === 'ios' ? 
+                     'rgba(255, 255, 255, 0.08)' :
+                     'rgba(255, 255, 255, 0.05)',
+                  borderColor: borderColor,
+               }
+            ]}>
                {item.image ? (
                   <Image source={{ uri: item.image }} style={styles.cardImage} />
                ) : (
@@ -333,7 +342,7 @@ export default function SearchScreen() {
                   </View>
                )}
                <View style={styles.cardTextContainer}>
-                  <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
+                  <Text style={[styles.cardTitle, { color: textColor }]} numberOfLines={1}>{item.name}</Text>
                   <TouchableOpacity
                      style={[
                         styles.button,
@@ -379,11 +388,19 @@ export default function SearchScreen() {
       const isCurrentlyPlaying = currentlyPlayingId === id;
 
       return (
-         <View style={styles.card}>
+         <View style={[
+            styles.card,
+            { 
+               backgroundColor: Platform.OS === 'ios' ? 
+                  'rgba(255, 255, 255, 0.08)' :
+                  'rgba(255, 255, 255, 0.05)',
+               borderColor: borderColor,
+            }
+         ]}>
             {image && <Image source={{ uri: image }} style={styles.cardImage} />}
             <View style={styles.cardTextContainer}>
-               <Text style={styles.cardTitle} numberOfLines={1}>{title}</Text>
-               <Text style={styles.cardSubtitle} numberOfLines={1}>{subtitle}</Text>
+               <Text style={[styles.cardTitle, { color: textColor }]} numberOfLines={1}>{title}</Text>
+               <Text style={[styles.cardSubtitle, { color: secondaryColor }]} numberOfLines={1}>{subtitle}</Text>
                {searchType === "track" && (
                   <View style={styles.buttonRow}>
                      {previewUrl ? (
@@ -608,7 +625,6 @@ const styles = StyleSheet.create({
       borderRadius: 20,
    },
    card: {
-      backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.8)' : 'white',
       borderRadius: 16,
       padding: 16,
       marginBottom: 16,
@@ -622,7 +638,6 @@ const styles = StyleSheet.create({
       ...Platform.select({
          ios: {
             borderWidth: 1,
-            borderColor: 'rgba(98, 0, 238, 0.05)',
          }
       })
    },
@@ -638,11 +653,9 @@ const styles = StyleSheet.create({
    cardTitle: {
       fontSize: 16,
       fontWeight: "bold",
-      color: "#222",
    },
    cardSubtitle: {
       fontSize: 14,
-      color: "#666",
       marginBottom: 6,
    },
    spotifyIcon: {
