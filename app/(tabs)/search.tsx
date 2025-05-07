@@ -98,7 +98,11 @@ export default function SearchScreen() {
                setResults(removeDuplicates(processedResults));
             } catch (error) {
                console.error("User search error:", error);
-               Alert.alert("Error", "Failed to search users");
+               if (error.response?.status !== 404) {
+                  Alert.alert("Error", "Failed to search users");
+               } else {
+                  setResults([]);
+               }
             }
          } else {
             const token = await getSpotifyToken();
