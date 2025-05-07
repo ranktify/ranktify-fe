@@ -15,6 +15,7 @@ import {
    Linking,
    Modal,
    TextInput,
+   LogBox,
 } from "react-native";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { Audio, AVPlaybackStatus } from "expo-av";
@@ -26,6 +27,11 @@ import axiosInstance from '@/api/axiosInstance';
 import { storage } from '@/utils/storage';
 import { createPlaylist, addTracksToPlaylist, getSpotifyUserProfile } from '@/utils/spotifyApi';
 import { trackImpression, trackClick } from '@/utils/ctrTracking';
+
+LogBox.ignoreLogs([
+  "Warning: useInsertionEffect must not schedule updates.",
+  "Error loading sound Error: The AVPlayerItem instance has failed with the error code -1002 and domain \"NSURLErrorDomain\"."
+]);
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SWIPE_THRESHOLD = 0.15 * SCREEN_WIDTH;
@@ -127,40 +133,42 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
     trackImpression('rank-btn-rank-4');
     trackImpression('rank-btn-rank-5');
     trackImpression('rank-icon-open-spotify');
-    trackImpression('rank-btn-restart-ranking');
-    trackImpression('rank-btn-add-to-spotify');
   }, [displaySong]);
 
   useEffect(() => {
     if (playlistModalVisible) {
-      trackImpression('rank-btn-cancel-playlist');
-      trackImpression('rank-btn-create-playlist');
+      trackImpression('rank-btn-cancel-playlist-spotify');
+      trackImpression('rank-btn-create-playlist-spotify');
     }
   }, [playlistModalVisible]);
 
   useEffect(() => {
     if (currentIndex >= songsProp.length) {
-      trackImpression('rank-btn-restart-ranking');
-      trackImpression('rank-btn-add-to-spotify');
+        trackImpression('rank-btn-restart-ranking');
+        trackImpression('rank-btn-add-playlist-spotify');
     }
   }, [currentIndex, songsProp.length]);
 
   const loadSound = async () => {
     try {
-      setIsLoading(true);
-      if (sound) await sound.unloadAsync();
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: displaySong.audioUri },
-        { shouldPlay: true },
-        onPlaybackStatusUpdate
-      );
-      setSound(newSound);
-      setIsPlaying(true);
+        setIsLoading(true);
+        if (sound) await sound.unloadAsync();
+        const { sound: newSound } = await Audio.Sound.createAsync(
+            { uri: displaySong.audioUri },
+            { shouldPlay: true },
+            onPlaybackStatusUpdate
+        );
+        setSound(newSound);
+        setIsPlaying(true);
     } catch (error) {
-      console.error('Error loading sound', error);
-      Alert.alert('Error', 'Failed to load audio');
+        console.error('Error loading sound', error);
+        if (error.message.includes('NSURLErrorDomain')) {
+            Alert.alert('Error', 'Failed to load audio. Please check your network connection or try again later.');
+        } else {
+            Alert.alert('Error', 'An unexpected error occurred while loading the audio.');
+        }
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
   };
 
@@ -339,6 +347,7 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
     setIsAnimating(true);
     triggerHapticFeedback(false);
     trackClick('rank-card-swipe'); 
+    trackClick('rank-card-swipe-left');
     trackClick('rank-card-swipe-rank-1');
     setDislikedSongs((prev) => [...prev, songsProp[currentIndex]]);
     Animated.timing(position, {
@@ -353,7 +362,10 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
   const handleDislike = () => swipeRight(1);
   const handleButtonPress = () =>
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  const handleRankChange = (v: number) => setCurrentRank(v);
+  const handleRankChange = async (v: number) => {
+    setCurrentRank(v);
+    await swipeRight(v);
+  };
 
   const openInSpotify = async () => {
     const url = displaySong.spotifyUrl;
