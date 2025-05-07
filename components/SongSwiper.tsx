@@ -25,6 +25,7 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 import axiosInstance from '@/api/axiosInstance';
 import { storage } from '@/utils/storage';
 import { createPlaylist, addTracksToPlaylist, getSpotifyUserProfile } from '@/utils/spotifyApi';
+import { trackImpression, trackClick } from '@/utils/ctrTracking';
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SWIPE_THRESHOLD = 0.15 * SCREEN_WIDTH;
@@ -114,6 +115,35 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
       });
     }
   }, [currentIndex, songsProp]);
+
+  useEffect(() => {
+    trackImpression('rank-card-container');
+    trackImpression('rank-btn-dislike');
+    trackImpression('rank-btn-play');
+    trackImpression('rank-btn-like');
+    trackImpression('rank-btn-rank-1');
+    trackImpression('rank-btn-rank-2');
+    trackImpression('rank-btn-rank-3');
+    trackImpression('rank-btn-rank-4');
+    trackImpression('rank-btn-rank-5');
+    trackImpression('rank-icon-open-spotify');
+    trackImpression('rank-btn-restart-ranking');
+    trackImpression('rank-btn-add-to-spotify');
+  }, [displaySong]);
+
+  useEffect(() => {
+    if (playlistModalVisible) {
+      trackImpression('rank-btn-cancel-playlist');
+      trackImpression('rank-btn-create-playlist');
+    }
+  }, [playlistModalVisible]);
+
+  useEffect(() => {
+    if (currentIndex >= songsProp.length) {
+      trackImpression('rank-btn-restart-ranking');
+      trackImpression('rank-btn-add-to-spotify');
+    }
+  }, [currentIndex, songsProp.length]);
 
   const loadSound = async () => {
     try {
@@ -293,6 +323,8 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
       .then((res) => console.log('Rank published:', res.status))
       .catch((error) => console.error('Error publishing rank', error.response?.data || error));
     }
+    trackClick('rank-card-swipe');
+    trackClick(`rank-card-swipe-rank-${rank}`);
     setLikedSongs((prev) => [...prev, { ...songsProp[currentIndexRef.current], rank: rankToSend }]);
     setCurrentRank(0);
     Animated.timing(position, {
@@ -306,6 +338,8 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
     if (currentIndex >= songsProp.length || isAnimating) return;
     setIsAnimating(true);
     triggerHapticFeedback(false);
+    trackClick('rank-card-swipe'); 
+    trackClick('rank-card-swipe-rank-1');
     setDislikedSongs((prev) => [...prev, songsProp[currentIndex]]);
     Animated.timing(position, {
       toValue: { x: -SCREEN_WIDTH - 100, y: 0 },
@@ -369,6 +403,7 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
               <TouchableOpacity
                 style={[styles.restartButton, { backgroundColor: primaryColor, marginTop: 0 }]}
                 onPress={() => {
+                  trackClick('rank-btn-restart-ranking');
                   handleButtonPress();
                   if (sound) stopSound();
                   onRankingComplete();
@@ -379,6 +414,7 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
               <TouchableOpacity
                 style={[styles.restartButton, { backgroundColor: '#1DB954', marginLeft: 10, marginTop: 0 }]}
                 onPress={() => {
+                  trackClick('rank-btn-add-playlist-spotify');
                   handleButtonPress();
                   setPlaylistModalVisible(true);
                 }}
@@ -402,13 +438,22 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
               <View style={styles.modalButtonRow}>
                 <TouchableOpacity
                   style={styles.modalButton}
-                  onPress={() => { setPlaylistModalVisible(false); setPlaylistNameSuffix(''); }}
+                  onPress={() => { 
+                    trackClick('rank-btn-cancel-playlist-spotify');
+                    setPlaylistModalVisible(false); 
+                    setPlaylistNameSuffix(''); 
+                  }}
                 >
                   <Text style={{ color: primaryColor }}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.modalButton, { backgroundColor: primaryColor }]}
-                  onPress={() => { doCreatePlaylist(playlistNameSuffix); setPlaylistModalVisible(false); setPlaylistNameSuffix(''); }}
+                  onPress={() => { 
+                    trackClick('rank-btn-create-playlist-spotify');
+                    doCreatePlaylist(playlistNameSuffix); 
+                    setPlaylistModalVisible(false); 
+                    setPlaylistNameSuffix(''); 
+                  }}
                 >
                   <Text style={{ color: '#fff' }}>Create</Text>
                 </TouchableOpacity>
@@ -526,7 +571,7 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
             </View>
             <TouchableOpacity
               style={{ position: 'absolute', bottom: 16, right: 16, zIndex: 10 }}
-              onPress={openInSpotify}
+              onPress={() => { trackClick('rank-icon-open-spotify'); openInSpotify(); }}
               disabled={!displaySong.spotifyUrl}
             >
               <Image source={SpotifyIcon} style={{ width: 24, height: 24 }} />
@@ -557,7 +602,7 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
                     backgroundColor: primaryColor,
                   },
                 ]}
-                onPress={() => handleRankChange(v)}
+                onPress={() => { trackClick(`rank-btn-rank-${v}`); handleRankChange(v); }}
               >
                 <Text
                   style={[
@@ -577,10 +622,7 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
         <View style={styles.buttonsContainer}>
           <TouchableOpacity
             style={[styles.button, styles.dislikeButton]}
-            onPress={() => {
-              handleButtonPress();
-              handleDislike();
-            }}
+            onPress={() => { trackClick('rank-btn-dislike'); handleButtonPress(); handleDislike(); }}
             disabled={isAnimating}
           >
             <MaterialIcons name="close" size={30} color="white" />
@@ -588,10 +630,7 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
 
           <TouchableOpacity
             style={[styles.button, styles.playButton]}
-            onPress={() => {
-              handleButtonPress();
-              togglePlayback();
-            }}
+            onPress={() => { trackClick('rank-btn-play'); handleButtonPress(); togglePlayback(); }}
             disabled={isLoading}
           >
             {isLoading ? (
@@ -605,10 +644,7 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
 
           <TouchableOpacity
             style={[styles.button, { backgroundColor: primaryColor }]}
-            onPress={() => {
-              handleButtonPress();
-              handleLike();
-            }}
+            onPress={() => { trackClick('rank-btn-like'); handleButtonPress(); handleLike(); }}
             disabled={isAnimating}
           >
             <MaterialIcons name="favorite" size={30} color="white" />
