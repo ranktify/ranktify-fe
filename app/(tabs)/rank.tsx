@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -18,6 +18,7 @@ import SongSwiper, { Song } from '@/components/SongSwiper';
 import { getSpotifyToken } from '@/utils/spotifyAuth';
 import axiosInstance from '@/api/axiosInstance';
 import storage from '@/utils/storage';
+import { trackImpression, trackClick } from '@/utils/ctrTracking';
 
 LogBox.ignoreLogs([
   "Warning: useInsertionEffect must not schedule updates.",
@@ -31,6 +32,14 @@ export default function RankPage() {
   const [isRankingSessionActive, setIsRankingSessionActive] = useState(false);
   const [isFetchingSongs, setIsFetchingSongs] = useState(false);
   const [friendsList, setFriendsList] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!isRankingSessionActive) {
+      trackImpression('rank-container-onboarding');
+      trackImpression('rank-btn-start');
+    }
+    trackImpression('rank-btn-start');
+  }, [isRankingSessionActive]);
 
   const startRankingSession = async () => {
     setIsFetchingSongs(true);
@@ -152,7 +161,7 @@ export default function RankPage() {
           </Text>
           <TouchableOpacity
             style={styles.button}
-            onPress={startRankingSession}
+            onPress={() => { trackClick('rank-btn-start'); startRankingSession(); }}
             disabled={isFetchingSongs}
           >
             {isFetchingSongs ? (
