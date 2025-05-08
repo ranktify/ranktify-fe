@@ -313,16 +313,56 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
                      </TouchableOpacity>
                   </View>
                   <View style={styles.passwordHintContainer}>
-                     <Text style={[styles.passwordHint, { color: passwordValidations.length ? "green" : "red" }]}>
+                     <Text
+                        style={[
+                           styles.passwordHint,
+                           {
+                              color: password.length > 0
+                                 ? passwordValidations.length
+                                    ? "green"
+                                    : "red"
+                                 : "#999",
+                           },
+                        ]}>
                         • 8-32 characters
                      </Text>
-                     <Text style={[styles.passwordHint, { color: passwordValidations.uppercase ? "green" : "red" }]}>
+                     <Text
+                        style={[
+                           styles.passwordHint,
+                           {
+                              color: password.length > 0
+                                 ? passwordValidations.uppercase
+                                    ? "green"
+                                    : "red"
+                                 : "#999",
+                           },
+                        ]}>
                         • At least one uppercase letter
                      </Text>
-                     <Text style={[styles.passwordHint, { color: passwordValidations.number ? "green" : "red" }]}>
+                     <Text
+                        style={[
+                           styles.passwordHint,
+                           {
+                              color: password.length > 0
+                                 ? passwordValidations.number
+                                    ? "green"
+                                    : "red"
+                                 : "#999",
+                           },
+                        ]}>
                         • At least one number
                      </Text>
-                     <Text style={[styles.passwordHint, { color: passwordValidations.specialChar ? "green" : "red" }]}>
+                     <Text
+                        style={[
+                           styles.passwordHint,
+                           {
+                              color: password.length > 0
+                                 ? passwordValidations.specialChar
+                                    ? "green"
+                                    : "red"
+                                 : "#999",
+                           },
+                        ]}>
                         • At least one special character (@$!%*?&#)
                      </Text>
                   </View>
@@ -342,7 +382,8 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
                         value={confirmPassword}
                         onChangeText={setConfirmPassword}
                      />
-                     <TouchableOpacity onPress={() => setIsConfirmPasswordVisible(!isConfirmPasswordVisible)}>
+                     <TouchableOpacity
+                        onPress={() => setIsConfirmPasswordVisible(!isConfirmPasswordVisible)}>
                         <Ionicons
                            name={isConfirmPasswordVisible ? "eye-off-outline" : "eye-outline"}
                            size={24}
@@ -355,8 +396,7 @@ const SignUpScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
                      style={[styles.signupButton, { opacity: isFormValid ? 1 : 0.5 }]}
                      onPress={handleSignupPress}
                      activeOpacity={isFormValid ? 0.8 : 1}
-                     disabled={isLoading || !isFormValid}
-                  >
+                     disabled={isLoading || !isFormValid}>
                      {isLoading ? (
                         <ActivityIndicator color="white" />
                      ) : (

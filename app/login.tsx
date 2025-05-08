@@ -12,6 +12,8 @@ import {
    StatusBar,
    Dimensions,
    ActivityIndicator,
+   TouchableWithoutFeedback,
+   Keyboard,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useThemeColor } from "@/hooks/useThemeColor";
@@ -26,6 +28,7 @@ const LoginScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
    const [email, setEmail] = useState("");
    const [password, setPassword] = useState("");
    const [isLoading, setIsLoading] = useState(false);
+   const [showPassword, setShowPassword] = useState(false);
    const textColor = useThemeColor({}, "text");
    const backgroundColor = useThemeColor({}, "background");
    const placeholderColor =
@@ -99,78 +102,87 @@ const LoginScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
    return (
       <SafeAreaView style={dynamicStyles.safeArea}>
          <StatusBar barStyle={backgroundColor === "#fff" ? "dark-content" : "light-content"} />
-         <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-            keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
-         >
-            <View style={[styles.contentContainer, { paddingBottom: navbarHeight }]}>
-               <View style={styles.headerContainer}>
-                  <Text style={dynamicStyles.title}>Welcome to Ranktify</Text>
-                  <Text style={dynamicStyles.subtitle}>Sign in to continue</Text>
-               </View>
-
-               <View style={styles.formContainer}>
-                  <View style={dynamicStyles.inputContainer}>
-                     <Ionicons
-                        name="mail-outline"
-                        size={24}
-                        color="#6200ee"
-                        style={styles.inputIcon}
-                     />
-                     <TextInput
-                        placeholder="Email"
-                        placeholderTextColor={placeholderColor}
-                        style={dynamicStyles.input}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        value={email}
-                        onChangeText={setEmail}
-                     />
+         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <KeyboardAvoidingView
+               style={styles.container}
+               behavior={Platform.OS === "ios" ? "padding" : undefined}
+               keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+            >
+               <View style={[styles.contentContainer, { paddingBottom: navbarHeight }]}>
+                  <View style={styles.headerContainer}>
+                     <Text style={dynamicStyles.title}>Welcome to Ranktify</Text>
+                     <Text style={dynamicStyles.subtitle}>Sign in to continue</Text>
                   </View>
 
-                  <View style={dynamicStyles.inputContainer}>
-                     <Ionicons
-                        name="lock-closed-outline"
-                        size={24}
-                        color="#6200ee"
-                        style={styles.inputIcon}
-                     />
-                     <TextInput
-                        placeholder="Password"
-                        placeholderTextColor={placeholderColor}
-                        style={dynamicStyles.input}
-                        secureTextEntry
-                        value={password}
-                        onChangeText={setPassword}
-                     />
+                  <View style={styles.formContainer}>
+                     <View style={dynamicStyles.inputContainer}>
+                        <Ionicons
+                           name="mail-outline"
+                           size={24}
+                           color="#6200ee"
+                           style={styles.inputIcon}
+                        />
+                        <TextInput
+                           placeholder="Email"
+                           placeholderTextColor={placeholderColor}
+                           style={dynamicStyles.input}
+                           keyboardType="email-address"
+                           autoCapitalize="none"
+                           value={email}
+                           onChangeText={setEmail}
+                        />
+                     </View>
+
+                     <View style={dynamicStyles.inputContainer}>
+                        <Ionicons
+                           name="lock-closed-outline"
+                           size={24}
+                           color="#6200ee"
+                           style={styles.inputIcon}
+                        />
+                        <TextInput
+                           placeholder="Password"
+                           placeholderTextColor={placeholderColor}
+                           style={dynamicStyles.input}
+                           secureTextEntry={!showPassword}
+                           value={password}
+                           onChangeText={setPassword}
+                        />
+                        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                           <Ionicons
+                              name={showPassword ? "eye-off-outline" : "eye-outline"}
+                              size={24}
+                              color="#6200ee"
+                           />
+                        </TouchableOpacity>
+                     </View>
+
+                     <TouchableOpacity style={styles.forgotPassword}>
+                        <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                     </TouchableOpacity>
+
+                     <TouchableOpacity
+                        style={styles.loginButton}
+                        onPress={handleLoginPress}
+                        activeOpacity={0.8}
+                        disabled={isLoading}
+                     >
+                        {isLoading ? (
+                           <ActivityIndicator color="white" />
+                        ) : (
+                           <Text style={styles.loginButtonText}>LOGIN</Text>
+                        )}
+                     </TouchableOpacity>
                   </View>
 
-                  <TouchableOpacity style={styles.forgotPassword}>
-                     <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                     style={styles.loginButton}
-                     onPress={handleLoginPress}
-                     activeOpacity={0.8}
-                     disabled={isLoading}
-                  >
-                     {isLoading ? (
-                        <ActivityIndicator color="white" />
-                     ) : (
-                        <Text style={styles.loginButtonText}>LOGIN</Text>
-                     )}
+                  <TouchableOpacity style={styles.signupContainer} onPress={handleSignupPress}>
+                     <Text style={dynamicStyles.signupText}>
+                        Don't have an account? <Text style={styles.signupLink}>Sign up</Text>
+                     </Text>
                   </TouchableOpacity>
                </View>
-
-               <TouchableOpacity style={styles.signupContainer} onPress={handleSignupPress}>
-                  <Text style={dynamicStyles.signupText}>
-                     Don't have an account? <Text style={styles.signupLink}>Sign up</Text>
-                  </Text>
-               </TouchableOpacity>
-            </View>
-         </KeyboardAvoidingView>
+            </KeyboardAvoidingView>
+         </TouchableWithoutFeedback>
       </SafeAreaView>
    );
 });
