@@ -602,7 +602,7 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
           ]}
         >
           <Text style={[styles.rankLabel, { color: textColor }]}>
-            What is your ranking? {currentRank > 0 ? `${currentRank}` : ''}
+            What is your ranking?
           </Text>
           <View style={styles.rankButtons}>
             {[1, 2, 3, 4, 5].map((v) => (
