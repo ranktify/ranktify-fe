@@ -4,23 +4,26 @@
     "slug": "ranktify-fe",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/AppIcon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": "./assets/images/AppIcon.png",
+      "bundleIdentifier": "com.ranktify.app"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/AppIcon.png",
         "backgroundColor": "#ffffff"
       }
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "title": "Ranktify - Music Rankings"
     },
     "plugins": [
       "expo-router",
@@ -42,7 +45,7 @@
       "baseURL": "http://localhost:8080",
       "spotify": {
         "clientId": "INSERT_CLIENT_ID",
-        "redirectUri": "exp://127.0.0.1:19000/" // Add this redirectUri to your Spotify Developer Dashboard Application
+        "redirectUri": "exp://127.0.0.1:19000/"
       }
     }
   }
