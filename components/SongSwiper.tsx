@@ -99,6 +99,7 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentRank, setCurrentRank] = useState(0);
+  const [playbackError, setPlaybackError] = useState(false);
 
   const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
   const [playlistNameSuffix, setPlaylistNameSuffix] = useState('');
@@ -152,7 +153,14 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
   const loadSound = async () => {
     try {
         setIsLoading(true);
+        setPlaybackError(false);
         if (sound) await sound.unloadAsync();
+        
+        if (!displaySong.audioUri) {
+            setPlaybackError(true);
+            return;
+        }
+
         const { sound: newSound } = await Audio.Sound.createAsync(
             { uri: displaySong.audioUri },
             { shouldPlay: true },
@@ -161,12 +169,7 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
         setSound(newSound);
         setIsPlaying(true);
     } catch (error) {
-        console.error('Error loading sound', error);
-        if (error.message.includes('NSURLErrorDomain')) {
-            Alert.alert('Error', 'Failed to load audio. Please check your network connection or try again later.');
-        } else {
-            Alert.alert('Error', 'An unexpected error occurred while loading the audio.');
-        }
+        setPlaybackError(true);
     } finally {
         setIsLoading(false);
     }
@@ -213,6 +216,7 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
   };
 
   const togglePlayback = async () => {
+    if (playbackError) return;
     if (isPlaying) await pauseSound();
     else await playSound();
   };
@@ -641,12 +645,14 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.button, styles.playButton]}
+            style={[styles.button, styles.playButton, playbackError && styles.errorButton]}
             onPress={() => { trackClick('rank-btn-play'); handleButtonPress(); togglePlayback(); }}
-            disabled={isLoading}
+            disabled={isLoading || playbackError}
           >
             {isLoading ? (
               <Text style={styles.loadingText}>...</Text>
+            ) : playbackError ? (
+              <MaterialIcons name="error-outline" size={30} color="white" />
             ) : isPlaying ? (
               <Ionicons name="pause" size={30} color="white" />
             ) : (
@@ -875,6 +881,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     marginLeft: 12,
+  },
+  errorButton: {
+    backgroundColor: '#FF9800',
   },
 });
 
