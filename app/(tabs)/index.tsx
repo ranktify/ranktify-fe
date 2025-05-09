@@ -1,9 +1,12 @@
-import { Image, StyleSheet, ScrollView, View, Text, TouchableOpacity, Alert } from 'react-native';
+import { Image, StyleSheet, ScrollView, View, Text, TouchableOpacity, Alert, Platform, StatusBar, SafeAreaView, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import axiosInstance from '../../api/axiosInstance';
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { getSpotifyToken } from '@/utils/spotifyAuth';
+
+const statusBarHeight = Platform.OS === "ios" ? 8 : StatusBar.currentHeight || 0;
+const SCREEN_WIDTH = Dimensions.get("window").width;
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -106,96 +109,100 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={[styles.scrollContent, { backgroundColor }]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor }}>
       <View style={[styles.container, { backgroundColor }]}>
-        {/* Top 5 Songs Section */}
-        {!isLoading && topFriendSongs.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: textColor }]}>Top 5 Songs Between Friends</Text>
-            {topFriendSongs.map((song, index) => (
-              <TouchableOpacity
-                key={index}
-                onPress={() => handleSongPress(song)}
-                style={[styles.songItem, { backgroundColor: backgroundColor === '#fff' ? '#f5f5f5' : '#1E1E1E' }]}
-              >
-                <View style={styles.songSquare}>
-                  <Image
-                    source={{ uri: song.cover_uri }}
-                    style={styles.songIcon}
-                    resizeMode="cover"
-                  />
-                </View>
-                <View style={styles.songInfo}>
-                  <Text style={[styles.songText, { color: textColor }]}>{song.title}</Text>
-                  <Text style={[styles.artistText, { color: textColor, opacity: 0.7 }]}>{song.artist}</Text>
-                </View>
-                <View style={styles.ratingContainer}>
-                  <Text style={styles.ratingText}>★ {song.avg_rank.toFixed(1)}</Text>
-                  <Text style={styles.ratingCount}>({song.rating_count})</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+        <View style={styles.formContainer}>
+          <ScrollView contentContainerStyle={[styles.scrollContent, { backgroundColor }]}>
+            {/* Top 5 Songs Section */}
+            {!isLoading && topFriendSongs.length > 0 && (
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: textColor }]}>Top 5 Songs Between Friends</Text>
+                {topFriendSongs.map((song, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={() => handleSongPress(song)}
+                    style={[styles.songItem, { backgroundColor: backgroundColor === '#fff' ? '#f5f5f5' : '#1E1E1E' }]}
+                  >
+                    <View style={styles.songSquare}>
+                      <Image
+                        source={{ uri: song.cover_uri }}
+                        style={styles.songIcon}
+                        resizeMode="cover"
+                      />
+                    </View>
+                    <View style={styles.songInfo}>
+                      <Text style={[styles.songText, { color: textColor }]}>{song.title}</Text>
+                      <Text style={[styles.artistText, { color: textColor, opacity: 0.7 }]}>{song.artist}</Text>
+                    </View>
+                    <View style={styles.ratingContainer}>
+                      <Text style={styles.ratingText}>★ {song.avg_rank.toFixed(1)}</Text>
+                      <Text style={styles.ratingCount}>({song.rating_count})</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
 
-        {/* Top 5 Rated Songs in Our App Section */}
-        {!isLoading && topWeeklySongs.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: textColor }]}>Top 5 Weekly Songs</Text>
-            {topWeeklySongs.map((song, index) => (
-              <TouchableOpacity
-                key={index}
-                onPress={() => handleSongPress(song)}
-                style={[styles.songItem, { backgroundColor: backgroundColor === '#fff' ? '#f5f5f5' : '#1E1E1E' }]}
-              >
-                <View style={styles.songSquare}>
-                  <Image
-                    source={{ uri: song.cover_uri }}
-                    style={styles.songIcon}
-                    resizeMode="cover"
-                  />
-                </View>
-                <View style={styles.songInfo}>
-                  <Text style={[styles.songText, { color: textColor }]}>{song.title}</Text>
-                  <Text style={[styles.artistText, { color: textColor, opacity: 0.7 }]}>{song.artist}</Text>
-                </View>
-                <View style={styles.ratingContainer}>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+            {/* Top 5 Rated Songs in Our App Section */}
+            {!isLoading && topWeeklySongs.length > 0 && (
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: textColor }]}>Top 5 Weekly Songs</Text>
+                {topWeeklySongs.map((song, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={() => handleSongPress(song)}
+                    style={[styles.songItem, { backgroundColor: backgroundColor === '#fff' ? '#f5f5f5' : '#1E1E1E' }]}
+                  >
+                    <View style={styles.songSquare}>
+                      <Image
+                        source={{ uri: song.cover_uri }}
+                        style={styles.songIcon}
+                        resizeMode="cover"
+                      />
+                    </View>
+                    <View style={styles.songInfo}>
+                      <Text style={[styles.songText, { color: textColor }]}>{song.title}</Text>
+                      <Text style={[styles.artistText, { color: textColor, opacity: 0.7 }]}>{song.artist}</Text>
+                    </View>
+                    <View style={styles.ratingContainer}>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
 
-        {/* Discover by Genre Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>Discover by Genre</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.genreScroll}>
-            {['Pop', 'Rock', 'Reggaeton', 'Salsa'].map((genre, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[styles.genreSquare, { backgroundColor: backgroundColor === '#fff' ? '#f5f5f5' : '#1E1E1E' }]}
-                onPress={() => handleGenrePress(genre)}
-              >
-                <Image
-                  source={{ uri: 'https://via.placeholder.com/100' }}
-                  style={styles.genreImage}
-                  resizeMode="cover"
-                />
-                <Text style={[styles.genreText, { color: textColor }]}>{genre}</Text>
-              </TouchableOpacity>
-            ))}
+            {/* Discover by Genre Section */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: textColor }]}>Discover by Genre</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.genreScroll}>
+                {['Pop', 'Rock', 'Reggaeton', 'Salsa'].map((genre, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[styles.genreSquare, { backgroundColor: backgroundColor === '#fff' ? '#f5f5f5' : '#1E1E1E' }]}
+                    onPress={() => handleGenrePress(genre)}
+                  >
+                    <Image
+                      source={{ uri: 'https://via.placeholder.com/100' }}
+                      style={styles.genreImage}
+                      resizeMode="cover"
+                    />
+                    <Text style={[styles.genreText, { color: textColor }]}>{genre}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Friend Activity Section */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: textColor }]}>Friend Activity</Text>
+              <View style={[styles.friendActivityBox, { backgroundColor: backgroundColor === '#fff' ? '#f5f5f5' : '#1E1E1E' }]}>
+                <Text style={[styles.friendActivityText, { color: textColor }]}>Friend is rating a lot of music</Text>
+              </View>
+            </View>
           </ScrollView>
         </View>
-
-        {/* Friend Activity Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>Friend Activity</Text>
-          <View style={[styles.friendActivityBox, { backgroundColor: backgroundColor === '#fff' ? '#f5f5f5' : '#1E1E1E' }]}>
-            <Text style={[styles.friendActivityText, { color: textColor }]}>Friend is rating a lot of music</Text>
-          </View>
-        </View>
       </View>
-    </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -207,9 +214,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     // backgroundColor is set dynamically
-    padding: 16,
-    paddingTop: 48,
+    paddingHorizontal: 20,
+    paddingTop: statusBarHeight,
     paddingBottom: 64,
+  },
+  formContainer: {
+    width: '100%',
+    maxWidth: SCREEN_WIDTH * 0.85,
+    alignSelf: 'center',
+    flex: 1,
   },
   section: {
     marginBottom: 24,
