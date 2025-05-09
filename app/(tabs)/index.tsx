@@ -1,8 +1,9 @@
-import { Image, StyleSheet, ScrollView, View, Text, TouchableOpacity } from 'react-native';
+import { Image, StyleSheet, ScrollView, View, Text, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import axiosInstance from '../../api/axiosInstance';
 import { useThemeColor } from "@/hooks/useThemeColor";
+import { getSpotifyToken } from '@/utils/spotifyAuth';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -70,8 +71,17 @@ export default function HomeScreen() {
 
   const handleGenrePress = async (genre: string) => {
     try {
+      const token = await getSpotifyToken();
+      if (!token) {
+        console.log('Authentication Required', 'Please connect your Spotify account in the Profile tab.');
+        Alert.alert('Authentication Required', 'Please connect your Spotify account in the Profile tab.');
+        return;
+      }
+
       console.log(`Fetching songs for genre: ${genre}`);
-      const response = await axiosInstance.get(`api/${genre}/10`);
+      const response = await axiosInstance.get(`/api/${genre}/10`, {
+        headers: { 'Spotify-Token': `Bearer ${token}` }
+      });
       console.log('Genre API response:', response.data);
       const songs = Array.isArray(response.data) ? response.data : [];
       console.log('Processed songs:', songs);
