@@ -1,6 +1,7 @@
+import React from 'react';
 import { useThemeColor } from "@/hooks/useThemeColor";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useEffect, useState } from "react";
 import {
    ActivityIndicator,
@@ -20,6 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../contexts/AuthContext";
 import { refreshSpotifyToken, useSpotifyAuth } from "../../utils/spotifyAuth";
 import SpotifyIcon from "@/assets/images/spotify-icon.png";
+import axiosInstance from "@/api/axiosInstance";
 
 const statusBarHeight = Platform.OS === "ios" ? 8 : StatusBar.currentHeight;
 
@@ -30,6 +32,9 @@ export default function ProfileScreen() {
 
    const { user, loading, logout, isAuthenticated } = useAuth();
    const [spotifyUsername, setSpotifyUsername] = useState(null);
+   const [friendCount, setFriendCount] = useState(0);
+   const [friends, setFriends] = useState([]);
+   const [rankedSongsCount, setRankedSongsCount] = useState(0);
 
    const {
       login: loginSpotify,
@@ -52,6 +57,47 @@ export default function ProfileScreen() {
          checkSpotifyConnection();
       }
    }, [isAuthenticated, user]);
+
+   const fetchFriendCount = async () => {
+      try {
+         if (user?.userId) {
+            const response = await axiosInstance.get(`/friends/${user.userId}`);
+            setFriendCount(response.data.friends.length || 0);
+            setFriends(response.data.friends || []);
+         } else {
+            console.log("No user ID available");
+         }
+      } catch (error) {
+         console.log("Error fetching friends:", error);
+         setFriendCount(0);
+         setFriends([]);
+      }
+   };
+
+   const fetchRankedSongs = async () => {
+      try {
+         if (user?.userId) {
+            const response = await axiosInstance.get('/rankings/ranked-songs', {
+            });
+            console.log("Ranked songs:", response.data);
+            setRankedSongsCount(response.data.rankings.length || 0);
+         } else {
+            console.log("No user ID available");
+         }
+      } catch (error) {
+         console.log("Error fetching ranked songs:", error);
+         setRankedSongsCount(0);
+      }
+   };
+
+   useFocusEffect(
+      React.useCallback(() => {
+         if (isAuthenticated && user) {
+            fetchFriendCount();
+            fetchRankedSongs();
+         }
+      }, [isAuthenticated, user])
+   );
 
    const fetchSpotifyProfile = async (token) => {
       try {
@@ -126,6 +172,16 @@ export default function ProfileScreen() {
       }
    };
 
+   const handleFriendsPress = () => {
+      router.push({
+         pathname: "/previewFriends",
+         params: {
+            friends: JSON.stringify(friends),
+            userId: user.userId
+         }
+      });
+   };
+
    const getInitials = () => {
       if (!user || !user.username) return "?";
       return user.username.charAt(0).toUpperCase();
@@ -177,18 +233,9 @@ export default function ProfileScreen() {
       <SafeAreaView style={{ flex: 1, backgroundColor }}>
          <ScrollView style={[styles.container, { backgroundColor }]}>
             <View style={styles.formContainer}>
-               {/* User Info Section */}
                <View style={styles.section}>
-                  <View style={styles.userHeader}>
-                     <View style={styles.userInfo}>
-                        <View style={styles.avatar}>
-                           <Text style={styles.avatarText}>{getInitials()}</Text>
-                        </View>
-                        <View style={styles.userTextInfo}>
-                           <Text style={[styles.username, { color: textColor }]}>{user.username}</Text>
-                           <Text style={[styles.email, { color: textColor }]}>{user.email}</Text>
-                        </View>
-                     </View>
+                  <View style={styles.userHeaderContainer}>
+                     <Text style={[styles.headerUsername, { color: textColor }]}>{user.username}</Text>
                      <TouchableOpacity
                         style={styles.logoutButton}
                         onPress={handleLogout}
@@ -197,27 +244,31 @@ export default function ProfileScreen() {
                         <Ionicons name="log-out-outline" size={24} color={textColor} />
                      </TouchableOpacity>
                   </View>
+                  
+                  <View style={styles.profileInfo}>
+                     <View style={styles.avatarContainer}>
+                        <View style={styles.avatar}>
+                           <Text style={styles.avatarText}>{getInitials()}</Text>
+                        </View>
+                        <View style={styles.statsContainer}>
+                           <TouchableOpacity style={styles.statItem} onPress={handleFriendsPress}>
+                              <Text style={[styles.statNumber, { color: textColor }]}>{friendCount}</Text>
+                              <Text style={[styles.statLabel, { color: textColor }]}>Friends</Text>
+                           </TouchableOpacity>
+                           <View style={[styles.statDivider, { backgroundColor: backgroundColor === '#fff' ? '#eee' : '#333' }]} />
+                           <View style={styles.statItem}>
+                              <Text style={[styles.statNumber, { color: textColor }]}>{rankedSongsCount}</Text>
+                              <Text style={[styles.statLabel, { color: textColor }]}>Ranked</Text>
+                           </View>
+                        </View>
+                     </View>
+                     
+                     <View style={styles.userDetails}>
+                        <Text style={[styles.userEmail, { color: textColor }]}>{user.email}</Text>
+                     </View>
+                  </View>
                </View>
 
-               {/* Stats Section */}
-               <View style={[styles.statsSection, { borderColor: backgroundColor === '#fff' ? '#eee' : '#333' }]}>
-                  <View style={styles.statItem}>
-                     <Text style={[styles.statNumber, { color: textColor }]}>0</Text>
-                     <Text style={[styles.statLabel, { color: textColor }]}>Ranked</Text>
-                  </View>
-                  <View style={[styles.statDivider, { backgroundColor: backgroundColor === '#fff' ? '#eee' : '#333' }]} />
-                  <View style={styles.statItem}>
-                     <Text style={[styles.statNumber, { color: textColor }]}>0</Text>
-                     <Text style={[styles.statLabel, { color: textColor }]}>Lists</Text>
-                  </View>
-                  <View style={[styles.statDivider, { backgroundColor: backgroundColor === '#fff' ? '#eee' : '#333' }]} />
-                  <View style={styles.statItem}>
-                     <Text style={[styles.statNumber, { color: textColor }]}>0</Text>
-                     <Text style={[styles.statLabel, { color: textColor }]}>Shared</Text>
-                  </View>
-               </View>
-
-               {/* Spotify Connection - Without header */}
                <View style={styles.spotifySection}>
                   <View style={[styles.spotifyCard, { backgroundColor: backgroundColor === '#fff' ? '#f5f5f5' : '#2a2a2a' }]}>
                      <View style={styles.spotifyInfo}>
@@ -260,7 +311,6 @@ export default function ProfileScreen() {
                   </View>
                </View>
 
-               {/* Rankings Section */}
                <View style={styles.section}>
                   <Text style={[styles.sectionTitle, { color: textColor }]}>Your Rankings</Text>
                   <Text style={[styles.emptyText, { color: textColor }]}>
@@ -313,77 +363,68 @@ const styles = StyleSheet.create({
       marginTop: 10,
    },
    section: {
-      marginBottom: 16, // Reduced margin
+      marginBottom: 16,
    },
-   userHeader: {
+   userHeaderContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+   },
+   headerUsername: {
+      fontSize: 24,
+      fontWeight: "bold",
+   },
+   profileInfo: {
+      marginBottom: 16,
+   },
+   avatarContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 16, // Reduced margin
+      marginBottom: 16,
+      gap: 24,
    },
    avatar: {
-      width: 72,
-      height: 72,
-      borderRadius: 36,
+      width: 100,
+      height: 100,
+      borderRadius: 50,
       backgroundColor: "#6200ee",
       justifyContent: "center",
       alignItems: "center",
+      marginRight: 20,
    },
    avatarText: {
       color: "#fff",
-      fontSize: 28,
+      fontSize: 40,
       fontWeight: "bold",
    },
-   userInfo: {
+   statsContainer: {
+      flex: 1,
       flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-around',
+   },
+   statItem: {
       alignItems: 'center',
       flex: 1,
    },
-   userTextInfo: {
-      marginLeft: 16,
-      flex: 1,
-   },
-   username: {
-      fontSize: 24,
+   statNumber: {
+      fontSize: 18,
       fontWeight: "bold",
       marginBottom: 4,
    },
-   email: {
-      fontSize: 16,
-      opacity: 0.8,
-   },
-   statsSection: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 24,
-      marginTop: 8,
-      paddingVertical: 16,
-      borderTopWidth: 1,
-      borderBottomWidth: 1,
-   },
-   statItem: {
-      flex: 1,
-      alignItems: 'center',
-   },
-   statNumber: {
-      fontSize: 28,
-      fontWeight: "bold",
-      marginBottom: 6,
-   },
    statLabel: {
-      fontSize: 15,
+      fontSize: 14,
       opacity: 0.7,
    },
    statDivider: {
       width: 1.5,
       height: 36,
-      marginHorizontal: 4,
    },
    sectionTitle: {
-      fontSize: 20,
+      fontSize: 18,
       fontWeight: "600",
-      marginBottom: 16,
+      marginBottom: 12,
    },
    spotifySection: {
       marginBottom: 24,
