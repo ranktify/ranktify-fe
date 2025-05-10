@@ -24,10 +24,12 @@ import { Audio } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 import { searchAndGetLinks } from "@/utils/spotifySearch";
 import SpotifyIcon from "@/assets/images/spotify-icon.png";
+import axiosInstance from "@/api/axiosInstance";
+import * as SecureStore from "expo-secure-store";
 
 const statusBarHeight = Platform.OS === "ios" ? 8 : StatusBar.currentHeight || 0;
 const SCREEN_WIDTH = Dimensions.get("window").width;
-const SEARCH_TYPES = ["track", "album", "artist"];
+const SEARCH_TYPES = ["track", "album", "artist", "user"];
 const SPOTIFY_ICON = SpotifyIcon;
 
 const SpotifyAPI = {
@@ -37,6 +39,12 @@ const SpotifyAPI = {
 };
 
 export default function SearchScreen() {
+   const backgroundColor = useThemeColor({}, "background");
+   const cardBackgroundColor = useThemeColor({}, "secondaryBackground");
+   const borderColor = useThemeColor({}, "border");
+   const textColor = useThemeColor({}, "text");
+   const secondaryColor = useThemeColor({}, "secondary");
+
    const [query, setQuery] = useState("");
    const [spotifyToken, setSpotifyToken] = useState<string | null>(null);
    const [results, setResults] = useState<any[]>([]);
@@ -47,10 +55,7 @@ export default function SearchScreen() {
    const [currentlyPlayingId, setCurrentlyPlayingId] = useState(null);
    const [isPlaying, setIsPlaying] = useState(false);
    const [isLoading, setIsLoading] = useState(false);
-
-   const textColor = useThemeColor({}, "text");
-   const backgroundColor = useThemeColor({}, "background");
-   const titleColor = useThemeColor({}, "text");
+   const [sentRequests, setSentRequests] = useState<Set<string>>(new Set());
 
    useEffect(() => {
       const fetchToken = async () => {
@@ -83,79 +88,98 @@ export default function SearchScreen() {
 
       setLoading(true);
       try {
-         const token = await getSpotifyToken();
-         if (!token) {
-            Alert.alert(
-               "Authentication Required",
-               "Please connect your Spotify account in the Profile tab"
-            );
-            setLoading(false);
-            return;
-         }
-
-         setSpotifyToken(token);
-
-         if (searchType === 'track') {
-            const result = await searchAndGetLinks(query);
-            if (result.success) {
-               setResults(removeDuplicates(result.results));
-            } else {
-               if (result.error?.includes("token")) {
-                  Alert.alert(
-                     "Session Expired",
-                     "Your Spotify session has expired. Please reconnect in the Profile tab."
-                  );
+         if (searchType === 'user') {
+            try {
+               const response = await axiosInstance.get(`/user/search/${query}`);
+               const processedResults = response.data.map(user => ({
+                  id: user.id,
+                  name: user.username,
+                  image: user.profilePicture || null,
+                  type: 'user'
+               }));
+               setResults(removeDuplicates(processedResults));
+            } catch (error) {
+               if (error.response?.status !== 404) {
+                  Alert.alert("Error", "Failed to search users");
                } else {
-                  Alert.alert("Error", result.error || "Failed to search Spotify");
+                  setResults([]);
                }
             }
          } else {
-            const params = new URLSearchParams({
-               q: query,
-               type: searchType,
-               limit: "20",
-               market: "US",
-            });
+            const token = await getSpotifyToken();
+            if (!token) {
+               Alert.alert(
+                  "Authentication Required",
+                  "Please connect your Spotify account in the Profile tab"
+               );
+               setLoading(false);
+               return;
+            }
 
-            const response = await fetch(`${SpotifyAPI.search}?${params}`, {
-               headers: {
-                  Authorization: `Bearer ${token}`,
-               },
-            });
+            setSpotifyToken(token);
 
-            if (!response.ok) {
-               if (response.status === 429) {
-                  const retryAfter = response.headers.get("Retry-After");
-                  Alert.alert("Rate Limit", `Try again after ${retryAfter} seconds`);
+            if (searchType === 'track') {
+               const result = await searchAndGetLinks(query);
+               if (result.success) {
+                  setResults(removeDuplicates(result.results));
+               } else {
+                  if (result.error?.includes("token")) {
+                     Alert.alert(
+                        "Session Expired",
+                        "Your Spotify session has expired. Please reconnect in the Profile tab."
+                     );
+                  } else {
+                     Alert.alert("Error", result.error || "Failed to search Spotify");
+                  }
                }
-               throw new Error("Spotify API request failed");
+            } else {
+               const params = new URLSearchParams({
+                  q: query,
+                  type: searchType,
+                  limit: "20",
+                  market: "US",
+               });
+
+               const response = await fetch(`${SpotifyAPI.search}?${params}`, {
+                  headers: {
+                     Authorization: `Bearer ${token}`,
+                  },
+               });
+
+               if (!response.ok) {
+                  if (response.status === 429) {
+                     const retryAfter = response.headers.get("Retry-After");
+                     Alert.alert("Rate Limit", `Try again after ${retryAfter} seconds`);
+                  }
+                  throw new Error("Spotify API request failed");
+               }
+
+               const data = await response.json();
+               let processedResults = [];
+
+               if (searchType === 'album') {
+                  processedResults = removeDuplicates(data.albums.items.map(album => ({
+                     id: album.id,
+                     name: album.name,
+                     artists: album.artists.map(a => a.name).join(", "),
+                     images: album.images,
+                     type: 'album'
+                  })));
+               } else if (searchType === 'artist') {
+                  processedResults = removeDuplicates(data.artists.items.map(artist => ({
+                     id: artist.id,
+                     name: artist.name,
+                     images: artist.images,
+                     type: 'artist'
+                  })));
+               }
+
+               setResults(processedResults);
             }
-
-            const data = await response.json();
-            let processedResults = [];
-
-            if (searchType === 'album') {
-               processedResults = removeDuplicates(data.albums.items.map(album => ({
-                  id: album.id,
-                  name: album.name,
-                  artists: album.artists.map(a => a.name).join(", "),
-                  images: album.images,
-                  type: 'album'
-               })));
-            } else if (searchType === 'artist') {
-               processedResults = removeDuplicates(data.artists.items.map(artist => ({
-                  id: artist.id,
-                  name: artist.name,
-                  images: artist.images,
-                  type: 'artist'
-               })));
-            }
-
-            setResults(processedResults);
          }
       } catch (error) {
          console.error("Search error:", error);
-         Alert.alert("Error", "Failed to search Spotify. Please try again.");
+         Alert.alert("Error", "Failed to search. Please try again.");
       } finally {
          setLoading(false);
       }
@@ -267,6 +291,27 @@ export default function SearchScreen() {
       }
    };
 
+   const handleSendFriendRequest = async (receiverId: string) => {
+      try {
+         const userInfoStr = await SecureStore.getItemAsync('user_info');
+         if (!userInfoStr) {
+            Alert.alert('Error', 'Please log in to send friend requests');
+            return;
+         }
+
+         const userInfo = JSON.parse(userInfoStr);
+         const userId = userInfo.userId;
+
+         await axiosInstance.post(`/friends/send/${userId}/${receiverId}`);
+         
+         setSentRequests(prev => new Set([...prev, receiverId]));
+         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch (error) {
+         console.error('Failed to send friend request:', error);
+         Alert.alert('Error', 'Failed to send friend request');
+      }
+   };
+
    useEffect(() => {
       return () => {
          stopSound();
@@ -275,6 +320,63 @@ export default function SearchScreen() {
 
    const renderResultItem = ({ item }) => {
       if (!item) return null;
+
+      if (searchType === 'user') {
+         const hasRequestBeenSent = sentRequests.has(item.id);
+         
+         return (
+            <View style={[
+               styles.card,
+               { 
+                  backgroundColor: Platform.OS === 'ios' ? 
+                     'rgba(255, 255, 255, 0.08)' :
+                     'rgba(255, 255, 255, 0.05)',
+                  borderColor: borderColor,
+               }
+            ]}>
+               {item.image ? (
+                  <Image source={{ uri: item.image }} style={styles.cardImage} />
+               ) : (
+                  <View style={[styles.cardImage, styles.userPlaceholder]}>
+                     <Ionicons name="person" size={30} color="#666" />
+                  </View>
+               )}
+               <View style={styles.cardTextContainer}>
+                  <Text style={[styles.cardTitle, { color: textColor }]} numberOfLines={1}>{item.name}</Text>
+                  <TouchableOpacity
+                     style={[
+                        styles.button,
+                        { 
+                           marginTop: 6,
+                           backgroundColor: hasRequestBeenSent ? '#4CAF50' : '#6200ee',
+                           opacity: hasRequestBeenSent ? 0.8 : 1
+                        }
+                     ]}
+                     onPress={() => handleSendFriendRequest(item.id)}
+                     disabled={hasRequestBeenSent}
+                  >
+                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        {hasRequestBeenSent ? (
+                           <>
+                              <Ionicons name="checkmark" size={20} color="white" />
+                              <Text style={[styles.buttonText, { color: 'white' }]}>
+                                 Friend Request Sent
+                              </Text>
+                           </>
+                        ) : (
+                           <>
+                              <Ionicons name="person-add" size={20} color="white" />
+                              <Text style={[styles.buttonText, { color: 'white' }]}>
+                                 Send Friend Request
+                              </Text>
+                           </>
+                        )}
+                     </View>
+                  </TouchableOpacity>
+               </View>
+            </View>
+         );
+      }
 
       const id = item.id;
       const image = item.image || item.images?.[0]?.url || item.album?.images?.[0]?.url;
@@ -286,11 +388,19 @@ export default function SearchScreen() {
       const isCurrentlyPlaying = currentlyPlayingId === id;
 
       return (
-         <View style={styles.card}>
+         <View style={[
+            styles.card,
+            { 
+               backgroundColor: Platform.OS === 'ios' ? 
+                  'rgba(255, 255, 255, 0.08)' :
+                  'rgba(255, 255, 255, 0.05)',
+               borderColor: borderColor,
+            }
+         ]}>
             {image && <Image source={{ uri: image }} style={styles.cardImage} />}
             <View style={styles.cardTextContainer}>
-               <Text style={styles.cardTitle} numberOfLines={1}>{title}</Text>
-               <Text style={styles.cardSubtitle} numberOfLines={1}>{subtitle}</Text>
+               <Text style={[styles.cardTitle, { color: textColor }]} numberOfLines={1}>{title}</Text>
+               <Text style={[styles.cardSubtitle, { color: secondaryColor }]} numberOfLines={1}>{subtitle}</Text>
                {searchType === "track" && (
                   <View style={styles.buttonRow}>
                      {previewUrl ? (
@@ -354,7 +464,8 @@ export default function SearchScreen() {
          {[
             { type: 'track', icon: 'musical-note' },
             { type: 'album', icon: 'disc' },
-            { type: 'artist', icon: 'person' }
+            { type: 'artist', icon: 'person' },
+            { type: 'user', icon: 'people' }
          ].map(({ type, icon }) => (
             <TouchableOpacity
                key={type}
@@ -376,7 +487,7 @@ export default function SearchScreen() {
                <View style={styles.inputContainer}>
                   <Ionicons name="search-outline" size={24} color="#6200ee" style={styles.inputIcon} />
                   <TextInput
-                     placeholder="Search tracks, albums, artists..."
+                     placeholder="Search tracks, albums, artists, users..."
                      value={query}
                      onChangeText={setQuery}
                      style={styles.input}
@@ -480,12 +591,12 @@ const styles = StyleSheet.create({
       flexDirection: "row",
       justifyContent: "space-between",
       marginBottom: 16,
-      gap: 8,
+      gap: 6,
    },
    toggleButton: {
       flex: 1,
       backgroundColor: "#cccccc",
-      height: 56,
+      height: 48,
       borderRadius: 8,
       alignItems: "center",
       justifyContent: "center",
@@ -495,7 +606,7 @@ const styles = StyleSheet.create({
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.2,
       shadowRadius: 1.41,
-      gap: 8,
+      paddingHorizontal: 8,
    },
    activeToggle: {
       backgroundColor: "#6200ee",
@@ -506,14 +617,14 @@ const styles = StyleSheet.create({
    toggleText: {
       color: "white",
       fontWeight: "bold",
-      fontSize: 14,
+      fontSize: 11,
+      letterSpacing: 0.5,
    },
    searchButton: {
       padding: 8,
       borderRadius: 20,
    },
    card: {
-      backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.8)' : 'white',
       borderRadius: 16,
       padding: 16,
       marginBottom: 16,
@@ -527,7 +638,6 @@ const styles = StyleSheet.create({
       ...Platform.select({
          ios: {
             borderWidth: 1,
-            borderColor: 'rgba(98, 0, 238, 0.05)',
          }
       })
    },
@@ -543,11 +653,9 @@ const styles = StyleSheet.create({
    cardTitle: {
       fontSize: 16,
       fontWeight: "bold",
-      color: "#222",
    },
    cardSubtitle: {
       fontSize: 14,
-      color: "#666",
       marginBottom: 6,
    },
    spotifyIcon: {
@@ -595,5 +703,10 @@ const styles = StyleSheet.create({
    },
    listContainer: {
       paddingBottom: 25,
+   },
+   userPlaceholder: {
+      backgroundColor: '#f0f0f0',
+      justifyContent: 'center',
+      alignItems: 'center',
    },
 });

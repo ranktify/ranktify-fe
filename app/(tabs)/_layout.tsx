@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import React from "react";
+import React, { useEffect } from "react";
 import { Platform } from "react-native";
 import { HapticTab } from "@/components/HapticTab";
 import { IconSymbol } from "@/components/ui/IconSymbol";
@@ -8,73 +8,99 @@ import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AuthGuard from "../../components/AuthGuard.js";
+import { NotificationProvider, useNotifications } from '@/components/NotificationContext';
 
-export default function TabLayout() {
+function TabBarIcon({ name, iosName, androidName, color }: { name: string; iosName: string; androidName: string; color: string }) {
+   if (Platform.OS === "ios") {
+      return <IconSymbol size={28} name={iosName} color={color} />;
+   } else {
+      return <MaterialIcons size={28} name={androidName} color={color} />;
+   }
+}
+
+function TabNavigator() {
    const colorScheme = useColorScheme();
+   const { notificationCount, refreshNotifications } = useNotifications();
 
-   const getTabBarIcon = (name: string, iosName: string, androidName: string) => {
-      return ({ color }: { color: string }) => {
-         if (Platform.OS === "ios") {
-            return <IconSymbol size={28} name={iosName} color={color} />;
-         } else {
-            return <MaterialIcons size={28} name={androidName} color={color} />;
-         }
-      };
-   };
+   // Refresh notifications when tab navigator mounts
+   useEffect(() => {
+      refreshNotifications();
+   }, []);
 
    return (
-      <AuthGuard>
-         <Tabs
-            screenOptions={{
-               tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
-               headerShown: false,
-               tabBarButton: HapticTab,
-               tabBarBackground: TabBarBackground,
-               tabBarStyle: Platform.select({
-                  ios: {
-                     // Use a transparent background on iOS to show the blur effect
-                     position: "absolute",
-                  },
-                  default: {},
-               }),
+      <Tabs
+         screenOptions={{
+            tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
+            headerShown: false,
+            tabBarButton: HapticTab,
+            tabBarBackground: TabBarBackground,
+            tabBarStyle: Platform.select({
+               ios: {
+                  position: "absolute",
+               },
+               default: {},
+            }),
+         }}
+      >
+         <Tabs.Screen
+            name="index"
+            options={{
+               title: "Home",
+               tabBarIcon: ({ color }) => (
+                  <TabBarIcon name="house" iosName="house.fill" androidName="home" color={color} />
+               ),
             }}
-         >
-            <Tabs.Screen
-               name="index"
-               options={{
-                  title: "Home",
-                  tabBarIcon: getTabBarIcon("house", "house.fill", "home"),
-               }}
-            />
-            <Tabs.Screen
-               name="search"
-               options={{
-                  title: "Search",
-                  tabBarIcon: getTabBarIcon("magnifyingglass", "magnifyingglass", "search"),
-               }}
-            />
-            <Tabs.Screen
-               name="rank"
-               options={{
-                  title: "Rank",
-                  tabBarIcon: getTabBarIcon("star", "star.fill", "star"),
-               }}
-            />
-            <Tabs.Screen
-               name="notifications"
-               options={{
-                  title: "Notifications",
-                  tabBarIcon: getTabBarIcon("bell", "bell.fill", "notifications"),
-               }}
-            />
-            <Tabs.Screen
-               name="profile"
-               options={{
-                  title: "Profile",
-                  tabBarIcon: getTabBarIcon("person", "person.fill", "person"),
-               }}
-            />
-         </Tabs>
+         />
+         <Tabs.Screen
+            name="search"
+            options={{
+               title: "Search",
+               tabBarIcon: ({ color }) => (
+                  <TabBarIcon name="magnifyingglass" iosName="magnifyingglass" androidName="search" color={color} />
+               ),
+            }}
+         />
+         <Tabs.Screen
+            name="rank"
+            options={{
+               title: "Rank",
+               tabBarIcon: ({ color }) => (
+                  <TabBarIcon name="star" iosName="star.fill" androidName="star" color={color} />
+               ),
+            }}
+         />
+         <Tabs.Screen
+            name="notifications"
+            options={{
+               title: "Notifications",
+               tabBarIcon: ({ color }) => (
+                  <TabBarIcon name="bell" iosName="bell.fill" androidName="notifications" color={color} />
+               ),
+               tabBarBadge: notificationCount > 0 ? notificationCount : undefined,
+               tabBarBadgeStyle: {
+                  backgroundColor: '#FF3B30',
+               }
+            }}
+         />
+         <Tabs.Screen
+            name="profile"
+            options={{
+               title: "Profile",
+               tabBarIcon: ({ color }) => (
+                  <TabBarIcon name="person" iosName="person.fill" androidName="person" color={color} />
+               ),
+            }}
+         />
+      </Tabs>
+   );
+}
+
+export default function TabLayout() {
+   return (
+      <AuthGuard>
+         <NotificationProvider>
+            <TabNavigator />
+         </NotificationProvider>
       </AuthGuard>
    );
 }
