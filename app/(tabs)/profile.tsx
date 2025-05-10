@@ -35,6 +35,7 @@ export default function ProfileScreen() {
    const [friendCount, setFriendCount] = useState(0);
    const [friends, setFriends] = useState([]);
    const [rankedSongsCount, setRankedSongsCount] = useState(0);
+   const [streaks, setStreaks] = useState(0);
 
    const {
       login: loginSpotify,
@@ -90,11 +91,39 @@ export default function ProfileScreen() {
       }
    };
 
+   const fetchStreaks = async () => {
+      try {
+         if (!user?.userId) {
+            console.log("No user ID available for fetching streaks");
+            setStreaks(0);
+            return;
+         }
+
+         const response = await axiosInstance.get('/streaks');
+         if (!response.data || typeof response.data.streaks !== 'number') {
+            console.log("Invalid streaks data received:", response.data);
+            setStreaks(0);
+            return;
+         }
+         setStreaks(response.data.streaks);
+      } catch (error) {
+         console.log("Error fetching streaks:", error);
+         // Show a user-friendly error message
+         Alert.alert(
+            "Error",
+            "Failed to fetch your streak data. Please try again later.",
+            [{ text: "OK" }]
+         );
+         setStreaks(0);
+      }
+   };
+
    useFocusEffect(
       React.useCallback(() => {
          if (isAuthenticated && user) {
             fetchFriendCount();
             fetchRankedSongs();
+            fetchStreaks();
          }
       }, [isAuthenticated, user])
    );
@@ -259,6 +288,14 @@ export default function ProfileScreen() {
                            <View style={styles.statItem}>
                               <Text style={[styles.statNumber, { color: textColor }]}>{rankedSongsCount}</Text>
                               <Text style={[styles.statLabel, { color: textColor }]}>Ranked</Text>
+                           </View>
+                           <View style={[styles.statDivider, { backgroundColor: backgroundColor === '#fff' ? '#eee' : '#333' }]} />
+                           <View style={styles.statItem}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                                 <Ionicons name="flame" size={18} color="#FF9500" style={{ marginRight: 4 }} />
+                                 <Text style={[styles.statNumber, { color: textColor }]}>{streaks}</Text>
+                              </View>
+                              <Text style={[styles.statLabel, { color: textColor }]}>Streak</Text>
                            </View>
                         </View>
                      </View>
