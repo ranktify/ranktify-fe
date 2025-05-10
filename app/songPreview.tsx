@@ -3,6 +3,8 @@ import { useLocalSearchParams } from 'expo-router';
 import { Audio } from 'expo-av';
 import { useState, useEffect } from 'react';
 import { Stack } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 export default function SongPreview() {
   const params = useLocalSearchParams();
@@ -10,6 +12,11 @@ export default function SongPreview() {
   const [sound, setSound] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
+  const secondaryColor = useThemeColor({}, 'secondary');
+  const primaryColor = useThemeColor({}, 'primary');
 
   const loadSound = async () => {
     try {
@@ -58,14 +65,16 @@ export default function SongPreview() {
   }, [sound]);
 
   const openInSpotify = async () => {
+    if (!spotifyUrl) return;
     try {
       const supported = await Linking.canOpenURL(spotifyUrl as string);
       if (supported) {
         await Linking.openURL(spotifyUrl as string);
       } else {
-        Alert.alert("Error", "Cannot open Spotify");
+        await WebBrowser.openBrowserAsync(spotifyUrl as string);
       }
     } catch (error) {
+      console.error('Error opening Spotify URL', error);
       Alert.alert("Error", "Failed to open Spotify");
     }
   };
@@ -78,27 +87,34 @@ export default function SongPreview() {
           headerBackTitle: "Back",
         }}
       />
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor }]}>
         <Image 
           source={{ uri: imageUri as string }}
           style={styles.image}
         />
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.artist}>{artist}</Text>
+        <Text style={[styles.title, { color: textColor }]}>{title}</Text>
+        <Text style={[styles.artist, { color: secondaryColor }]}>{artist}</Text>
         <View style={styles.buttonContainer}>
-          <TouchableOpacity 
-            style={styles.button}
-            onPress={togglePlayback}
-            disabled={isLoading}
-          >
-            <Text style={styles.buttonText}>
-              {isLoading ? '...' : isPlaying ? '⏸ Pause' : '▶ Preview'}
-            </Text>
-          </TouchableOpacity>
+          {previewUrl ? (
+            <TouchableOpacity 
+              style={[styles.button, { backgroundColor: primaryColor }]}
+              onPress={togglePlayback}
+              disabled={isLoading}
+            >
+              <Text style={styles.buttonText}>
+                {isLoading ? '...' : isPlaying ? '⏸ Pause' : '▶ Preview'}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={[styles.button, { backgroundColor: secondaryColor, opacity: 0.5 }]}>
+              <Text style={styles.buttonText}>No Preview</Text>
+            </View>
+          )}
           
           <TouchableOpacity 
-            style={styles.button}
+            style={[styles.button, { backgroundColor: primaryColor }]}
             onPress={openInSpotify}
+            disabled={!spotifyUrl}
           >
             <Text style={styles.buttonText}>Open in Spotify</Text>
           </TouchableOpacity>
@@ -111,7 +127,6 @@ export default function SongPreview() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
     alignItems: 'center',
     padding: 20,
   },
@@ -124,12 +139,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
     marginBottom: 8,
   },
   artist: {
     fontSize: 18,
-    color: '#AAAAAA',
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -138,7 +151,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   button: {
-    backgroundColor: '#1DB954',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 25,
