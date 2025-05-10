@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Platform } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Platform, SafeAreaView, StatusBar } from "react-native";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { useEffect, useState } from "react";
 import axiosInstance from "@/api/axiosInstance";
@@ -69,7 +69,7 @@ export default function NotificationsScreen() {
   const handleAccept = async (request: FriendRequest) => {
     try {
       await axiosInstance.post(
-        `/friends/accept/${request.request_id}/${request.sender_id}/${request.receiver_id}`
+        `/friends/accept/${request.request_id}`
       );
       await fetchFriendRequests(); // This will update the notification count
     } catch (error) {
@@ -80,7 +80,7 @@ export default function NotificationsScreen() {
   const handleDeny = async (request: FriendRequest) => {
     try {
       await axiosInstance.delete(
-        `/friends/decline/${request.request_id}/${request.sender_id}/${request.receiver_id}`
+        `/friends/decline/${request.request_id}`
       );
       await fetchFriendRequests(); // This will update the notification count
     } catch (error) {
@@ -89,64 +89,70 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor }]}>
-      <View style={styles.headerContainer}>
-        <Text style={[styles.headerText, { color: textColor }]}>Notifications</Text>
-      </View>
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#6200ee" />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor }]}>
+      <ScrollView style={[styles.container, { backgroundColor }]}>
+        <View style={styles.headerContainer}>
+          <Text style={[styles.headerText, { color: textColor }]}>Notifications</Text>
         </View>
-      ) : !responseData?.friend_request?.length ? (
-        <View style={styles.emptyContainer}>
-          <Text style={[styles.emptyText, { color: textColor }]}>
-            No new notifications
-          </Text>
-        </View>
-      ) : (
-        responseData.friend_request.map((request) => (
-          <View 
-            key={request.request_id} 
-            style={[
-              styles.requestBox,
-              { backgroundColor: backgroundColor === '#fff' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(42, 42, 42, 0.8)' }
-            ]}
-          >
-            <View style={styles.requestContent}>
-              <View style={styles.requestHeader}>
-                <Ionicons name="person-add-outline" size={24} color={textColor} />
-                <Text style={[styles.requestText, { color: textColor }]}>
-                  {userNames[request.sender_id] || 'Loading...'} sent you a friend request
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#6200ee" />
+          </View>
+        ) : !responseData?.friend_request?.length ? (
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyText, { color: textColor }]}>
+              No new notifications
+            </Text>
+          </View>
+        ) : (
+          responseData.friend_request.map((request) => (
+            <View 
+              key={request.request_id} 
+              style={[
+                styles.requestBox,
+                { backgroundColor: backgroundColor === '#fff' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(42, 42, 42, 0.8)' }
+              ]}
+            >
+              <View style={styles.requestContent}>
+                <View style={styles.requestHeader}>
+                  <Ionicons name="person-add-outline" size={24} color={textColor} />
+                  <Text style={[styles.requestText, { color: textColor }]}>
+                    {userNames[request.sender_id] || 'Loading...'} sent you a friend request
+                  </Text>
+                </View>
+                <Text style={[styles.dateText, { color: textColor, opacity: 0.7 }]}>
+                  {new Date(request.request_date).toLocaleDateString()}
                 </Text>
-              </View>
-              <Text style={[styles.dateText, { color: textColor, opacity: 0.7 }]}>
-                {new Date(request.request_date).toLocaleDateString()}
-              </Text>
-              <View style={styles.buttonContainer}>
-                <TouchableOpacity
-                  style={[styles.button, styles.acceptButton]}
-                  onPress={() => handleAccept(request)}
-                >
-                  <Ionicons name="checkmark" size={20} color="white" />
-                  <Text style={styles.buttonText}>Accept</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.button, styles.denyButton]}
-                  onPress={() => handleDeny(request)}
-                >
-                  <Ionicons name="close" size={20} color="white" />
-                  <Text style={styles.buttonText}>Deny</Text>
-                </TouchableOpacity>
+                <View style={styles.buttonContainer}>
+                  <TouchableOpacity
+                    style={[styles.button, styles.acceptButton]}
+                    onPress={() => handleAccept(request)}
+                  >
+                    <Ionicons name="checkmark" size={20} color="white" />
+                    <Text style={styles.buttonText}>Accept</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.button, styles.denyButton]}
+                    onPress={() => handleDeny(request)}
+                  >
+                    <Ionicons name="close" size={20} color="white" />
+                    <Text style={styles.buttonText}>Deny</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </View>
-        ))
-      )}
-    </ScrollView>
+          ))
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
   container: {
     flex: 1,
     padding: 20,
