@@ -93,14 +93,27 @@ export default function ProfileScreen() {
 
    const fetchStreaks = async () => {
       try {
-         if (user?.userId) {
-            const response = await axiosInstance.get('/streaks');
-            setStreaks(response.data.streaks || 0);
-         } else {
-            console.log("No user ID available");
+         if (!user?.userId) {
+            console.log("No user ID available for fetching streaks");
+            setStreaks(0);
+            return;
          }
+
+         const response = await axiosInstance.get('/streaks');
+         if (!response.data || typeof response.data.streaks !== 'number') {
+            console.log("Invalid streaks data received:", response.data);
+            setStreaks(0);
+            return;
+         }
+         setStreaks(response.data.streaks);
       } catch (error) {
          console.log("Error fetching streaks:", error);
+         // Show a user-friendly error message
+         Alert.alert(
+            "Error",
+            "Failed to fetch your streak data. Please try again later.",
+            [{ text: "OK" }]
+         );
          setStreaks(0);
       }
    };

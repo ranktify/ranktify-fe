@@ -32,7 +32,7 @@ const SCREEN_WIDTH = Dimensions.get("window").width;
 export default function RankPage() {
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
-  const cardBackgroundColor = useThemeColor({}, 'secondaryBackground');
+  const cardBackgroundColor = useThemeColor({}, 'cardBackground');
 
   const [songs, setSongs] = useState<Song[]>([]);
   const [isRankingSessionActive, setIsRankingSessionActive] = useState(false);
@@ -52,10 +52,19 @@ export default function RankPage() {
   const fetchStreaks = async () => {
     try {
       const response = await axiosInstance.get('/streaks');
-      const streakCount = response.data.streaks || 0;
-      setStreaks(streakCount);
+      if (!response.data || typeof response.data.streaks !== 'number') {
+        console.log("Invalid streaks data received:", response.data);
+        setStreaks(0);
+        return;
+      }
+      setStreaks(response.data.streaks);
     } catch (error) {
       console.log("Error fetching streaks:", error);
+      Alert.alert(
+        "Error",
+        "Failed to fetch your streak data. Please try again later.",
+        [{ text: "OK" }]
+      );
       setStreaks(0);
     }
   };
