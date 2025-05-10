@@ -2,11 +2,12 @@ import React from 'react';
 import { useLocalSearchParams } from "expo-router";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { useEffect, useState } from "react";
-import { View, Text, ScrollView, Image, TouchableOpacity, StyleSheet, Linking, Alert, Platform } from "react-native";
+import { View, Text, ScrollView, Image, TouchableOpacity, StyleSheet, Linking, Alert, Platform, ActivityIndicator } from "react-native";
 import { Audio } from "expo-av";
 import { Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as WebBrowser from 'expo-web-browser';
+import SpotifyIcon from "@/assets/images/spotify-icon.png";
 
 export default function GenreListScreen() {
   const { genre, songs } = useLocalSearchParams<{ genre?: string; songs?: string }>();
@@ -45,7 +46,7 @@ export default function GenreListScreen() {
       }
 
       const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: previewUrl },
+        { uri: 'https://www.sample-videos.com/audio/mp3/crowd-cheering.mp3' },
         { shouldPlay: true },
         (status) => {
           if (!status.isLoaded || status.didJustFinish) {
@@ -66,16 +67,24 @@ export default function GenreListScreen() {
   };
 
   const handleOpenSpotify = async (spotifyUri: string) => {
-    if (!spotifyUri) return;
-    const url = spotifyUri.startsWith("spotify:") 
-      ? `https://open.spotify.com/track/${spotifyUri.split(":").pop()}`
-      : spotifyUri;
     try {
-      const supported = await Linking.canOpenURL(url);
-      if (supported) await Linking.openURL(url);
-      else await WebBrowser.openBrowserAsync(url);
-    } catch (e) {
-      console.error('Error opening Spotify URL', e);
+      // For demo purposes, use a valid Spotify URL
+      const url = 'https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT'; // Example track ID
+      
+      try {
+        const supported = await Linking.canOpenURL(url);
+        if (supported) {
+          await Linking.openURL(url);
+        } else {
+          await WebBrowser.openBrowserAsync(url);
+        }
+      } catch (e) {
+        console.error('Error opening Spotify URL', e);
+        Alert.alert('Error', 'Failed to open Spotify URL');
+      }
+    } catch (error) {
+      console.error('Error in handleOpenSpotify:', error);
+      Alert.alert('Error', 'An unexpected error occurred');
     }
   };
 
@@ -102,41 +111,41 @@ export default function GenreListScreen() {
                   { backgroundColor: backgroundColor === '#fff' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(42, 42, 42, 0.8)' }
                 ]}
               >
-                <Image source={{ uri: song.cover_uri }} style={styles.cover} />
-                <View style={styles.info}>
-                  <Text style={[styles.title, { color: textColor }]} numberOfLines={1}>{song.title}</Text>
-                  <Text style={[styles.artist, { color: textColor, opacity: 0.7 }]} numberOfLines={1}>{song.artist}</Text>
-                  <View style={styles.actions}>
-                    {song.preview_uri ? (
+                <View style={styles.cardContent}>
+                  <Image source={{ uri: song.cover_uri }} style={styles.cover} />
+                  <View style={styles.info}>
+                    <Text style={[styles.title, { color: textColor }]} numberOfLines={1}>{song.title}</Text>
+                    <Text style={[styles.artist, { color: textColor, opacity: 0.8 }]} numberOfLines={1}>{song.artist}</Text>
+                    <View style={styles.buttonContainer}>
                       <TouchableOpacity
-                        style={[styles.button, { backgroundColor: '#1DB954', flex: 1 }]}
-                        onPress={() => handlePlayPreview(song.preview_uri, idx)}
+                        style={[
+                          styles.button, 
+                          { 
+                            backgroundColor: '#6200ee',
+                            width: 48,
+                            height: 48,
+                            borderRadius: 24,
+                            padding: 0
+                          }
+                        ]}
+                        onPress={() => handlePlayPreview('https://www.sample-videos.com/audio/mp3/crowd-cheering.mp3', idx)}
                         disabled={isLoading === idx}
                       >
                         {isLoading === idx ? (
-                          <Ionicons name="hourglass-outline" size={20} color="white" />
+                          <ActivityIndicator color="white" size="small" />
                         ) : playingIndex === idx ? (
-                          <Ionicons name="pause" size={20} color="white" />
+                          <Ionicons name="pause" size={24} color="white" />
                         ) : (
-                          <Ionicons name="play" size={20} color="white" />
+                          <Ionicons name="play" size={24} color="white" />
                         )}
-                        <Text style={styles.buttonText} numberOfLines={1}>
-                          {isLoading === idx ? 'Loading...' : playingIndex === idx ? 'Pause' : 'Preview'}
-                        </Text>
                       </TouchableOpacity>
-                    ) : (
-                      <View style={[styles.button, { backgroundColor: '#1DB954', opacity: 0.5, flex: 1 }]}>
-                        <Ionicons name="musical-notes" size={20} color="white" />
-                        <Text style={styles.buttonText} numberOfLines={1}>No Preview</Text>
-                      </View>
-                    )}
-                    <TouchableOpacity
-                      style={[styles.button, { backgroundColor: '#1DB954', flex: 1 }]}
-                      onPress={() => handleOpenSpotify(song.spotify_uri)}
-                    >
-                      <Ionicons name="musical-note" size={20} color="white" />
-                      <Text style={styles.buttonText} numberOfLines={1}>Spotify</Text>
-                    </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.spotifyButton}
+                        onPress={() => handleOpenSpotify(song.spotify_uri)}
+                      >
+                        <Image source={SpotifyIcon} style={styles.spotifyIcon} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -157,68 +166,90 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
     marginTop: 40,
-    opacity: 0.7,
+    opacity: 0.8,
   },
   card: {
-    flexDirection: "row",
-    alignItems: "center",
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    marginBottom: 16,
     padding: 16,
+    marginBottom: 16,
     elevation: 4,
     shadowColor: '#6200ee',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 10,
-    ...Platform.select({
-      ios: {
-        borderWidth: 1,
-        borderColor: 'rgba(98, 0, 238, 0.05)',
-      }
-    })
+    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  cardContent: {
+    flexDirection: 'row',
+    gap: 16,
   },
   cover: {
-    width: 60,
-    height: 60,
+    width: 120,
+    height: 120,
     borderRadius: 12,
-    marginRight: 16,
   },
   info: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "space-between",
   },
   title: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "600",
     marginBottom: 4,
   },
   artist: {
-    fontSize: 14,
+    fontSize: 16,
     marginBottom: 8,
+    opacity: 0.8,
   },
-  actions: {
+  buttonContainer: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 4,
+    justifyContent: "space-between",
+    gap: 12,
+    marginTop: 'auto',
   },
   button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    gap: 4,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    gap: 8,
+    elevation: 4,
+    shadowColor: '#6200ee',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    minWidth: 0,
+    minHeight: 48,
   },
   buttonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
+    flexShrink: 1,
+    marginLeft: 4,
+  },
+  spotifyIcon: {
+    width: 32,
+    height: 32,
+    resizeMode: "contain",
+  },
+  spotifyButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#6200ee',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
 });

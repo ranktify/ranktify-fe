@@ -93,7 +93,7 @@ export default function HomeScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor }}>
       <View style={[styles.container, { backgroundColor }]}>
         <View style={styles.formContainer}>
-          <ScrollView contentContainerStyle={[styles.scrollContent, { backgroundColor }]}>
+          <ScrollView contentContainerStyle={[styles.scrollContent, { backgroundColor }]} showsVerticalScrollIndicator={false}>
             {isLoading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#6200ee" />

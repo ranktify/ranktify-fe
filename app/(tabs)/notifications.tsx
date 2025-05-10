@@ -128,14 +128,14 @@ export default function NotificationsScreen() {
                     style={[styles.button, styles.acceptButton]}
                     onPress={() => handleAccept(request)}
                   >
-                    <Ionicons name="checkmark" size={20} color="white" />
+                    <Ionicons name="checkmark" size={24} color="white" />
                     <Text style={styles.buttonText}>Accept</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.button, styles.denyButton]}
                     onPress={() => handleDeny(request)}
                   >
-                    <Ionicons name="close" size={20} color="white" />
+                    <Ionicons name="close" size={24} color="white" />
                     <Text style={styles.buttonText}>Deny</Text>
                   </TouchableOpacity>
                 </View>
@@ -207,21 +207,23 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     gap: 12,
+    justifyContent: 'space-between',
   },
   button: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     gap: 8,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
+    elevation: 4,
+    shadowColor: '#6200ee',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    minHeight: 48,
   },
   acceptButton: {
     backgroundColor: '#1DB954',
@@ -230,9 +232,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#E74C3C',
   },
   buttonText: {
-    color: 'white',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   emptyContainer: {
     flex: 1,
