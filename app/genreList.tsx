@@ -1,9 +1,9 @@
 import { useLocalSearchParams } from "expo-router";
 import { useThemeColor } from "@/hooks/useThemeColor";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, ScrollView, Image, TouchableOpacity, StyleSheet, Linking, Alert } from "react-native";
 import { Audio } from "expo-av";
-import { Ionicons } from "@expo/vector-icons";
+import { Stack } from "expo-router";
 
 export default function GenreListScreen() {
   const { genre, songs } = useLocalSearchParams<{ genre?: string; songs?: string }>();
@@ -11,45 +11,60 @@ export default function GenreListScreen() {
   const backgroundColor = useThemeColor({}, "background");
   const parsedSongs = songs ? JSON.parse(songs) : [];
   const [playingIndex, setPlayingIndex] = useState<number | null>(null);
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const [isLoading, setIsLoading] = useState<number | null>(null);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
 
   useEffect(() => {
-    // Cleanup audio on unmount
     return () => {
-      if (soundRef.current) {
-        soundRef.current.unloadAsync();
+      if (sound) {
+        sound.unloadAsync();
       }
     };
-  }, []);
+  }, [sound]);
 
   const handlePlayPreview = async (previewUrl: string, index: number) => {
     try {
-      // Stop previous sound if playing
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync();
-        soundRef.current = null;
-      }
       if (playingIndex === index) {
-        setPlayingIndex(null);
-        return;
-      }
-      const { sound } = await Audio.Sound.createAsync({ uri: previewUrl });
-      soundRef.current = sound;
-      setPlayingIndex(index);
-      await sound.playAsync();
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (!status.isLoaded || status.didJustFinish) {
+        // Stop current playback
+        if (sound) {
+          await sound.stopAsync();
+          await sound.unloadAsync();
+          setSound(null);
           setPlayingIndex(null);
         }
-      });
+        return;
+      }
+
+      setIsLoading(index);
+      
+      // Stop previous playback
+      if (sound) {
+        await sound.stopAsync();
+        await sound.unloadAsync();
+      }
+
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: previewUrl },
+        { shouldPlay: true },
+        (status) => {
+          if (!status.isLoaded || status.didJustFinish) {
+            setPlayingIndex(null);
+            setSound(null);
+          }
+        }
+      );
+
+      setSound(newSound);
+      setPlayingIndex(index);
+      setIsLoading(null);
     } catch (error) {
       Alert.alert("Playback Error", "Could not play preview.");
       setPlayingIndex(null);
+      setIsLoading(null);
     }
   };
 
   const handleOpenSpotify = (spotifyUri: string) => {
-    // Try to open in Spotify app, fallback to web if not available
     const url = spotifyUri.startsWith("spotify:") 
       ? `https://open.spotify.com/track/${spotifyUri.split(":").pop()}`
       : spotifyUri;
@@ -59,49 +74,56 @@ export default function GenreListScreen() {
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor }}>
-      <View style={[styles.container, { backgroundColor }]}>
-        <Text style={[styles.header, { color: textColor }]}>
-          {genre ? `${genre} Songs` : "Songs"}
-        </Text>
-        {parsedSongs.length === 0 ? (
-          <Text style={[styles.emptyText, { color: textColor }]}>No songs found.</Text>
-        ) : (
-          parsedSongs.map((song: any, idx: number) => (
-            <View key={idx} style={[styles.songItem, { backgroundColor: backgroundColor === "#fff" ? "#f5f5f5" : "#1E1E1E" }]}>
-              <Image source={{ uri: song.cover_uri }} style={styles.cover} />
-              <View style={styles.info}>
-                <Text style={[styles.title, { color: textColor }]} numberOfLines={1}>{song.title}</Text>
-                <Text style={[styles.artist, { color: textColor, opacity: 0.7 }]} numberOfLines={1}>{song.artist}</Text>
-                <View style={styles.actions}>
-                  {song.preview_uri ? (
+    <>
+      <Stack.Screen 
+        options={{
+          title: genre ? `Genre: ${genre}` : "Genre",
+          headerTintColor: textColor,
+          headerStyle: { backgroundColor },
+          headerBackTitle: "Back",
+        }} 
+      />
+      <ScrollView style={{ flex: 1, backgroundColor }}>
+        <View style={[styles.container, { backgroundColor }]}>
+          {parsedSongs.length === 0 ? (
+            <Text style={[styles.emptyText, { color: textColor }]}>No songs found.</Text>
+          ) : (
+            parsedSongs.map((song: any, idx: number) => (
+              <View key={idx} style={[styles.songItem, { backgroundColor: backgroundColor === "#fff" ? "#f5f5f5" : "#1E1E1E" }]}>
+                <Image source={{ uri: song.cover_uri }} style={styles.cover} />
+                <View style={styles.info}>
+                  <Text style={[styles.title, { color: textColor }]} numberOfLines={1}>{song.title}</Text>
+                  <Text style={[styles.artist, { color: textColor, opacity: 0.7 }]} numberOfLines={1}>{song.artist}</Text>
+                  <View style={styles.actions}>
+                    {song.preview_uri ? (
+                      <TouchableOpacity
+                        style={[styles.playButton, playingIndex === idx && styles.playingButton]}
+                        onPress={() => handlePlayPreview(song.preview_uri, idx)}
+                        disabled={isLoading === idx}
+                      >
+                        <Text style={styles.buttonText}>
+                          {isLoading === idx ? '...' : playingIndex === idx ? '⏸ Pause' : '▶ Preview'}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={[styles.playButton, { opacity: 0.5 }]}>
+                        <Text style={styles.buttonText}>No Preview</Text>
+                      </View>
+                    )}
                     <TouchableOpacity
-                      style={styles.iconButton}
-                      onPress={() => handlePlayPreview(song.preview_uri, idx)}
+                      style={styles.spotifyButton}
+                      onPress={() => handleOpenSpotify(song.spotify_uri)}
                     >
-                      <Ionicons
-                        name={playingIndex === idx ? "pause-circle" : "play-circle"}
-                        size={32}
-                        color="#1DB954"
-                      />
+                      <Text style={styles.buttonText}>Open in Spotify</Text>
                     </TouchableOpacity>
-                  ) : (
-                    <Ionicons name="musical-notes-outline" size={28} color="#aaa" style={{ marginRight: 12 }} />
-                  )}
-                  <TouchableOpacity
-                    style={styles.spotifyButton}
-                    onPress={() => handleOpenSpotify(song.spotify_uri)}
-                  >
-                    <Ionicons name="logo-spotify" size={20} color="#fff" />
-                    <Text style={styles.spotifyButtonText}>Open in Spotify</Text>
-                  </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-            </View>
-          ))
-        )}
-      </View>
-    </ScrollView>
+            ))
+          )}
+        </View>
+      </ScrollView>
+    </>
   );
 }
 
@@ -154,21 +176,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 2,
   },
-  iconButton: {
+  playButton: {
+    backgroundColor: '#1DB954',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     marginRight: 12,
   },
-  spotifyButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#1DB954",
-    borderRadius: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
+  playingButton: {
+    backgroundColor: '#168D40',
   },
-  spotifyButtonText: {
-    color: "#fff",
-    fontWeight: "600",
-    marginLeft: 6,
+  buttonText: {
+    color: '#FFFFFF',
     fontSize: 14,
+    fontWeight: 'bold',
+  },
+  spotifyButton: {
+    backgroundColor: '#1DB954',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });
