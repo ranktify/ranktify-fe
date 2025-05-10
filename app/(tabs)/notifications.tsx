@@ -1,8 +1,9 @@
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Platform } from "react-native";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { useEffect, useState } from "react";
 import axiosInstance from "@/api/axiosInstance";
 import { useNotifications } from '@/components/NotificationContext';
+import { Ionicons } from "@expo/vector-icons";
 
 interface FriendRequest {
   request_id: number;
@@ -20,7 +21,6 @@ interface ResponseData {
 export default function NotificationsScreen() {
   const textColor = useThemeColor({}, "text");
   const backgroundColor = useThemeColor({}, "background");
-  const cardBackground = useThemeColor({}, "tint");
   const [responseData, setResponseData] = useState<ResponseData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userNames, setUserNames] = useState<{[key: number]: string}>({});
@@ -94,7 +94,9 @@ export default function NotificationsScreen() {
         <Text style={[styles.headerText, { color: textColor }]}>Notifications</Text>
       </View>
       {isLoading ? (
-        <ActivityIndicator size="large" color="#1DB954" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#6200ee" />
+        </View>
       ) : !responseData?.friend_request?.length ? (
         <View style={styles.emptyContainer}>
           <Text style={[styles.emptyText, { color: textColor }]}>
@@ -103,26 +105,39 @@ export default function NotificationsScreen() {
         </View>
       ) : (
         responseData.friend_request.map((request) => (
-          <View key={request.request_id} style={[styles.requestBox]}>
-            <Text style={styles.requestText}>
-              {userNames[request.sender_id] || 'Loading...'} sent you a friend request
-            </Text>
-            <Text style={[styles.dateText]}>
-              {new Date(request.request_date).toLocaleDateString()}
-            </Text>
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={[styles.button, styles.acceptButton]}
-                onPress={() => handleAccept(request)}
-              >
-                <Text style={styles.buttonText}>Accept</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.button, styles.denyButton]}
-                onPress={() => handleDeny(request)}
-              >
-                <Text style={styles.buttonText}>Deny</Text>
-              </TouchableOpacity>
+          <View 
+            key={request.request_id} 
+            style={[
+              styles.requestBox,
+              { backgroundColor: backgroundColor === '#fff' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(42, 42, 42, 0.8)' }
+            ]}
+          >
+            <View style={styles.requestContent}>
+              <View style={styles.requestHeader}>
+                <Ionicons name="person-add-outline" size={24} color={textColor} />
+                <Text style={[styles.requestText, { color: textColor }]}>
+                  {userNames[request.sender_id] || 'Loading...'} sent you a friend request
+                </Text>
+              </View>
+              <Text style={[styles.dateText, { color: textColor, opacity: 0.7 }]}>
+                {new Date(request.request_date).toLocaleDateString()}
+              </Text>
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  style={[styles.button, styles.acceptButton]}
+                  onPress={() => handleAccept(request)}
+                >
+                  <Ionicons name="checkmark" size={20} color="white" />
+                  <Text style={styles.buttonText}>Accept</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, styles.denyButton]}
+                  onPress={() => handleDeny(request)}
+                >
+                  <Ionicons name="close" size={20} color="white" />
+                  <Text style={styles.buttonText}>Deny</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         ))
@@ -134,38 +149,74 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    paddingTop: 60,
+    padding: 20,
+  },
+  headerContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+    marginTop: 16,
+  },
+  headerText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 40,
   },
   requestBox: {
+    borderRadius: 16,
+    marginBottom: 16,
+    elevation: 8,
+    shadowColor: '#6200ee',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    ...Platform.select({
+      ios: {
+        borderWidth: 1,
+        borderColor: 'rgba(98, 0, 238, 0.1)',
+      }
+    })
+  },
+  requestContent: {
     padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
-    backgroundColor: '#121212',  // Force dark background
+  },
+  requestHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
   },
   requestText: {
     fontSize: 16,
-    fontFamily: 'System',
-    marginBottom: 4,
-    color: '#FFFFFF',  // Force white text
+    fontWeight: '600',
+    flex: 1,
   },
   dateText: {
-    fontSize: 12,
-    color: '#FFFFFF',  // Force white text
-    fontFamily: 'System',
-    opacity: 0.7, // Slightly dimmed for secondary text
+    fontSize: 14,
+    marginBottom: 16,
   },
   buttonContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 12,
+    gap: 12,
   },
   button: {
     flex: 1,
-    padding: 8,
-    borderRadius: 4,
-    marginHorizontal: 4,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
   },
   acceptButton: {
     backgroundColor: '#1DB954',
@@ -175,25 +226,17 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: 'white',
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 100,
+    paddingTop: 40,
   },
   emptyText: {
-    fontSize: 18,
-    fontFamily: 'System',
-  },
-  headerContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  headerText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    fontFamily: 'System',
+    fontSize: 16,
+    opacity: 0.7,
   },
 });

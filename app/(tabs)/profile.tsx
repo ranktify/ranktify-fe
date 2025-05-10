@@ -34,6 +34,7 @@ export default function ProfileScreen() {
    const [spotifyUsername, setSpotifyUsername] = useState(null);
    const [friendCount, setFriendCount] = useState(0);
    const [friends, setFriends] = useState([]);
+   const [rankedSongsCount, setRankedSongsCount] = useState(0);
 
    const {
       login: loginSpotify,
@@ -73,10 +74,27 @@ export default function ProfileScreen() {
       }
    };
 
+   const fetchRankedSongs = async () => {
+      try {
+         if (user?.userId) {
+            const response = await axiosInstance.get('/rankings/ranked-songs', {
+            });
+            console.log("Ranked songs:", response.data);
+            setRankedSongsCount(response.data.rankings.length || 0);
+         } else {
+            console.log("No user ID available");
+         }
+      } catch (error) {
+         console.log("Error fetching ranked songs:", error);
+         setRankedSongsCount(0);
+      }
+   };
+
    useFocusEffect(
       React.useCallback(() => {
          if (isAuthenticated && user) {
             fetchFriendCount();
+            fetchRankedSongs();
          }
       }, [isAuthenticated, user])
    );
@@ -239,13 +257,8 @@ export default function ProfileScreen() {
                            </TouchableOpacity>
                            <View style={[styles.statDivider, { backgroundColor: backgroundColor === '#fff' ? '#eee' : '#333' }]} />
                            <View style={styles.statItem}>
-                              <Text style={[styles.statNumber, { color: textColor }]}>{0}</Text>
+                              <Text style={[styles.statNumber, { color: textColor }]}>{rankedSongsCount}</Text>
                               <Text style={[styles.statLabel, { color: textColor }]}>Ranked</Text>
-                           </View>
-                           <View style={[styles.statDivider, { backgroundColor: backgroundColor === '#fff' ? '#eee' : '#333' }]} />
-                           <View style={styles.statItem}>
-                              <Text style={[styles.statNumber, { color: textColor }]}>{0}</Text>
-                              <Text style={[styles.statLabel, { color: textColor }]}>Lists</Text>
                            </View>
                         </View>
                      </View>
@@ -393,6 +406,7 @@ const styles = StyleSheet.create({
    },
    statItem: {
       alignItems: 'center',
+      flex: 1,
    },
    statNumber: {
       fontSize: 18,

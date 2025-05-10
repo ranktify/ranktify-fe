@@ -38,6 +38,14 @@ const SpotifyAPI = {
    openApp: (type, id) => `spotify:${type}:${id}`,
 };
 
+interface FriendRequest {
+   request_id: number;
+   receiver_id: number;
+   sender_id: number;
+   request_date: string;
+   status: string;
+}
+
 export default function SearchScreen() {
    const backgroundColor = useThemeColor({}, "background");
    const cardBackgroundColor = useThemeColor({}, "secondaryBackground");
@@ -56,15 +64,112 @@ export default function SearchScreen() {
    const [isPlaying, setIsPlaying] = useState(false);
    const [isLoading, setIsLoading] = useState(false);
    const [sentRequests, setSentRequests] = useState<Set<string>>(new Set());
+   const [existingRequests, setExistingRequests] = useState<{[key: string]: number}>({});
 
    useEffect(() => {
+      console.log('SearchScreen useEffect triggered');
       const fetchToken = async () => {
-         const token = await getSpotifyToken();
-         console.log('Current Spotify Token:', token);
-         setSpotifyToken(token);
+         try {
+            const token = await getSpotifyToken();
+            console.log('Current Spotify Token:', token);
+            setSpotifyToken(token);
+         } catch (error) {
+            console.error('Error fetching Spotify token:', error);
+         }
       };
-      fetchToken();
+      
+      const initialize = async () => {
+         try {
+            console.log('Starting initialization...');
+            await fetchToken();
+            console.log('Fetching friend requests...');
+            await fetchExistingFriendRequests();
+            console.log('Initialization complete');
+         } catch (error) {
+            console.error('Error during initialization:', error);
+         }
+      };
+
+      initialize();
    }, []);
+
+   const fetchExistingFriendRequests = async () => {
+      try {
+         const response = await axiosInstance.get('/friends/friend-requests-sent');
+         
+         // Check if the response has the expected structure
+         if (!response.data || !response.data.friend_request) {
+            return;
+         }
+         
+         const requests: FriendRequest[] = response.data.friend_request || [];
+         const requestMap: Record<number, number> = {};
+         const sentSet = new Set<string>();
+         
+         // Sort requests by date in descending order to get the most recent ones first
+         requests.sort((a, b) => new Date(b.request_date).getTime() - new Date(a.request_date).getTime());
+         
+         requests.forEach((request: FriendRequest) => {
+            // Only add to map if there isn't already a request for this receiver
+            // Since we sorted by date, the first one we encounter will be the most recent
+            if (!requestMap[request.receiver_id]) {
+               requestMap[request.receiver_id] = request.request_id;
+               sentSet.add(request.receiver_id.toString());
+            }
+         });
+         
+         setExistingRequests(requestMap);
+         setSentRequests(sentSet);
+      } catch (error) {
+         if (error.response) {
+            console.error('Error response data:', error.response.data);
+            console.error('Error response status:', error.response.status);
+         }
+      }
+   };
+
+   const handleSendFriendRequest = async (receiverId: string) => {
+      try {
+         const userInfoStr = await SecureStore.getItemAsync('user_info');
+         if (!userInfoStr) {
+            Alert.alert('Error', 'Please log in to send friend requests');
+            return;
+         }
+
+         const userInfo = JSON.parse(userInfoStr);
+         const userId = userInfo.userId;
+
+         await axiosInstance.post(`/friends/send/${userId}/${receiverId}`);
+         
+         // After sending the request, fetch the updated friend requests to get the new request ID
+         await fetchExistingFriendRequests();
+         
+         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch (error) {
+         console.error('Failed to send friend request:', error);
+         Alert.alert('Error', 'Failed to send friend request');
+      }
+   };
+
+   const handleCancelFriendRequest = async (receiverId: string) => {
+      try {
+         const requestId = existingRequests[receiverId];
+         
+         if (!requestId) {
+            return;
+         }
+
+         await axiosInstance.delete(`/friends/friend-request/${requestId}`);
+         
+         // After canceling the request, fetch the updated friend requests
+         await fetchExistingFriendRequests();
+         
+         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch (error) {
+         console.error('Failed to cancel friend request:', error);
+         Alert.alert('Error', 'Failed to cancel friend request');
+      }
+   };
 
    const removeDuplicates = (items) => {
       const seen = new Set();
@@ -89,19 +194,24 @@ export default function SearchScreen() {
       setLoading(true);
       try {
          if (searchType === 'user') {
+            console.log('🔍 Starting user search for:', query);
             try {
                const response = await axiosInstance.get(`/user/search/${query}`);
+               console.log('📥 User search response:', response.data);
                const processedResults = response.data.map(user => ({
                   id: user.id,
                   name: user.username,
                   image: user.profilePicture || null,
                   type: 'user'
                }));
+               console.log('🔄 Processed user results:', processedResults);
                setResults(removeDuplicates(processedResults));
             } catch (error) {
                if (error.response?.status !== 404) {
+                  console.error('❌ User search error:', error);
                   Alert.alert("Error", "Failed to search users");
                } else {
+                  console.log('ℹ️ No users found');
                   setResults([]);
                }
             }
@@ -291,27 +401,6 @@ export default function SearchScreen() {
       }
    };
 
-   const handleSendFriendRequest = async (receiverId: string) => {
-      try {
-         const userInfoStr = await SecureStore.getItemAsync('user_info');
-         if (!userInfoStr) {
-            Alert.alert('Error', 'Please log in to send friend requests');
-            return;
-         }
-
-         const userInfo = JSON.parse(userInfoStr);
-         const userId = userInfo.userId;
-
-         await axiosInstance.post(`/friends/send/${userId}/${receiverId}`);
-         
-         setSentRequests(prev => new Set([...prev, receiverId]));
-         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch (error) {
-         console.error('Failed to send friend request:', error);
-         Alert.alert('Error', 'Failed to send friend request');
-      }
-   };
-
    useEffect(() => {
       return () => {
          stopSound();
@@ -322,7 +411,8 @@ export default function SearchScreen() {
       if (!item) return null;
 
       if (searchType === 'user') {
-         const hasRequestBeenSent = sentRequests.has(item.id);
+         const hasRequestBeenSent = sentRequests.has(item.id.toString());
+         const requestId = existingRequests[item.id];
          
          return (
             <View style={[
@@ -348,19 +438,24 @@ export default function SearchScreen() {
                         styles.button,
                         { 
                            marginTop: 6,
-                           backgroundColor: hasRequestBeenSent ? '#4CAF50' : '#6200ee',
+                           backgroundColor: hasRequestBeenSent ? '#FF4444' : '#6200ee',
                            opacity: hasRequestBeenSent ? 0.8 : 1
                         }
                      ]}
-                     onPress={() => handleSendFriendRequest(item.id)}
-                     disabled={hasRequestBeenSent}
+                     onPress={() => {
+                        if (hasRequestBeenSent) {
+                           handleCancelFriendRequest(item.id);
+                        } else {
+                           handleSendFriendRequest(item.id);
+                        }
+                     }}
                   >
                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         {hasRequestBeenSent ? (
                            <>
-                              <Ionicons name="checkmark" size={20} color="white" />
+                              <Ionicons name="close" size={20} color="white" />
                               <Text style={[styles.buttonText, { color: 'white' }]}>
-                                 Friend Request Sent
+                                 Cancel Request
                               </Text>
                            </>
                         ) : (
