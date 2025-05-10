@@ -34,8 +34,7 @@ const SPOTIFY_ICON = SpotifyIcon;
 
 const SpotifyAPI = {
    search: "https://api.spotify.com/v1/search",
-   openWeb: (type, id) => `https://open.spotify.com/${type}/${id}`,
-   openApp: (type, id) => `spotify:${type}:${id}`,
+   getUrl: (type: string, id: string) => `https://open.spotify.com/${type}/${id}`
 };
 
 interface FriendRequest {
@@ -250,7 +249,7 @@ export default function SearchScreen() {
                   market: "US",
                });
 
-               const response = await fetch(`${SpotifyAPI.search}?${params}`, {
+               const response = await fetch(`https://api.spotify.com/v1/search?${params}`, {
                   headers: {
                      Authorization: `Bearer ${token}`,
                   },
@@ -296,19 +295,14 @@ export default function SearchScreen() {
    };
 
    const openSpotifyLink = async (type, id) => {
-      const spotifyUri = SpotifyAPI.openApp(type, id);
-      const webUrl = SpotifyAPI.openWeb(type, id);
-
+      const url = SpotifyAPI.getUrl(type, id);
+      if (!url) return;
       try {
-         const canOpenApp = await Linking.canOpenURL(spotifyUri);
-         if (canOpenApp) {
-            await Linking.openURL(spotifyUri);
-         } else {
-            await WebBrowser.openBrowserAsync(webUrl);
-         }
-      } catch (error) {
-         console.error("Failed to open link:", error);
-         Alert.alert("Error", "Unable to open Spotify link.");
+         const supported = await Linking.canOpenURL(url);
+         if (supported) await Linking.openURL(url);
+         else await WebBrowser.openBrowserAsync(url);
+      } catch (e) {
+         console.error('Error opening Spotify URL', e);
       }
    };
 
@@ -413,10 +407,12 @@ export default function SearchScreen() {
       if (searchType === 'user') {
          const hasRequestBeenSent = sentRequests.has(item.id.toString());
          const requestId = existingRequests[item.id];
+         const initials = item.name ? item.name.charAt(0).toUpperCase() : '?';
          
          return (
             <View style={[
                styles.card,
+               styles.userCard,
                { 
                   backgroundColor: Platform.OS === 'ios' ? 
                      'rgba(255, 255, 255, 0.08)' :
@@ -425,19 +421,18 @@ export default function SearchScreen() {
                }
             ]}>
                {item.image ? (
-                  <Image source={{ uri: item.image }} style={styles.cardImage} />
+                  <Image source={{ uri: item.image }} style={styles.userImage} />
                ) : (
-                  <View style={[styles.cardImage, styles.userPlaceholder]}>
-                     <Ionicons name="person" size={30} color="#666" />
+                  <View style={[styles.userImage, styles.userPlaceholder]}>
+                     <Text style={styles.avatarText}>{initials}</Text>
                   </View>
                )}
-               <View style={styles.cardTextContainer}>
+               <View style={styles.userInfo}>
                   <Text style={[styles.cardTitle, { color: textColor }]} numberOfLines={1}>{item.name}</Text>
                   <TouchableOpacity
                      style={[
-                        styles.button,
+                        styles.userButton,
                         { 
-                           marginTop: 6,
                            backgroundColor: hasRequestBeenSent ? '#FF4444' : '#6200ee',
                            opacity: hasRequestBeenSent ? 0.8 : 1
                         }
@@ -462,7 +457,7 @@ export default function SearchScreen() {
                            <>
                               <Ionicons name="person-add" size={20} color="white" />
                               <Text style={[styles.buttonText, { color: 'white' }]}>
-                                 Send Friend Request
+                                 Send Request
                               </Text>
                            </>
                         )}
@@ -473,18 +468,78 @@ export default function SearchScreen() {
          );
       }
 
+      if (searchType === 'album') {
+         const image = item.image || item.images?.[0]?.url;
+         const title = item.name;
+         const artist = item.artists || '';
+         
+         return (
+            <View style={[
+               styles.card,
+               styles.albumCard,
+               { 
+                  backgroundColor: Platform.OS === 'ios' ? 
+                     'rgba(255, 255, 255, 0.08)' :
+                     'rgba(255, 255, 255, 0.05)',
+                  borderColor: borderColor,
+               }
+            ]}>
+               <Image source={{ uri: image }} style={styles.albumImage} />
+               <View style={styles.albumInfo}>
+                  <Text style={[styles.cardTitle, { color: textColor }]} numberOfLines={1}>{title}</Text>
+                  <Text style={[styles.cardSubtitle, { color: secondaryColor }]} numberOfLines={1}>{artist}</Text>
+               </View>
+               <TouchableOpacity
+                  style={styles.spotifyButton}
+                  onPress={() => openSpotifyLink(searchType, item.id)}
+               >
+                  <Image source={SPOTIFY_ICON} style={styles.spotifyIcon} />
+               </TouchableOpacity>
+            </View>
+         );
+      }
+
+      if (searchType === 'artist') {
+         const image = item.image || item.images?.[0]?.url;
+         const name = item.name;
+         
+         return (
+            <View style={[
+               styles.card,
+               styles.artistCard,
+               { 
+                  backgroundColor: Platform.OS === 'ios' ? 
+                     'rgba(255, 255, 255, 0.08)' :
+                     'rgba(255, 255, 255, 0.05)',
+                  borderColor: borderColor,
+               }
+            ]}>
+               <Image source={{ uri: image }} style={styles.artistImage} />
+               <View style={styles.artistInfo}>
+                  <Text style={[styles.cardTitle, { color: textColor }]} numberOfLines={1}>{name}</Text>
+               </View>
+               <TouchableOpacity
+                  style={styles.spotifyButton}
+                  onPress={() => openSpotifyLink(searchType, item.id)}
+               >
+                  <Image source={SPOTIFY_ICON} style={styles.spotifyIcon} />
+               </TouchableOpacity>
+            </View>
+         );
+      }
+
+      // Track search (default)
       const id = item.id;
       const image = item.image || item.images?.[0]?.url || item.album?.images?.[0]?.url;
       const title = item.name || item.title;
-      const subtitle =
-         item.artists ||
-         (item.artists ? item.artists.map((a) => a.name).join(", ") : item.label || "");
+      const subtitle = item.artists || (item.artists ? item.artists.map((a) => a.name).join(", ") : item.label || "");
       const previewUrl = item.preview_url || item.previewUrl;
       const isCurrentlyPlaying = currentlyPlayingId === id;
 
       return (
          <View style={[
             styles.card,
+            styles.trackCard,
             { 
                backgroundColor: Platform.OS === 'ios' ? 
                   'rgba(255, 255, 255, 0.08)' :
@@ -492,63 +547,47 @@ export default function SearchScreen() {
                borderColor: borderColor,
             }
          ]}>
-            {image && <Image source={{ uri: image }} style={styles.cardImage} />}
-            <View style={styles.cardTextContainer}>
+            <Image source={{ uri: image }} style={styles.trackImage} />
+            <View style={styles.trackInfo}>
                <Text style={[styles.cardTitle, { color: textColor }]} numberOfLines={1}>{title}</Text>
                <Text style={[styles.cardSubtitle, { color: secondaryColor }]} numberOfLines={1}>{subtitle}</Text>
-               {searchType === "track" && (
-                  <View style={styles.buttonRow}>
-                     {previewUrl ? (
-                        <TouchableOpacity
-                           style={[
-                              styles.button,
-                              { backgroundColor: "#4CAF50", marginTop: 6, flex: 1, marginRight: 8 },
-                           ]}
-                           onPress={() => handlePlayPreview(item)}
-                           disabled={isLoading}
-                        >
-                           {isLoading && currentlyPlayingId === item.id ? (
-                              <ActivityIndicator color="white" size="small" />
-                           ) : isCurrentlyPlaying && isPlaying ? (
-                              <Ionicons name="pause" size={20} color="white" />
-                           ) : (
-                              <Ionicons name="play" size={20} color="white" />
-                           )}
-                           <Text style={styles.buttonText}>
-                              {isLoading && currentlyPlayingId === item.id
-                                 ? "Loading..."
-                                 : isCurrentlyPlaying && isPlaying
-                                 ? "Pause"
-                                 : "Play Preview"}
-                           </Text>
-                        </TouchableOpacity>
-                     ) : (
-                        <TouchableOpacity
-                           style={[
-                              styles.button,
-                              { backgroundColor: "#ccc", marginTop: 6, flex: 1, marginRight: 8 },
-                           ]}
-                           disabled={true}
-                        >
-                           <Text style={[styles.buttonText, { color: "#888" }]}>No Preview</Text>
-                        </TouchableOpacity>
-                     )}
+               <View style={styles.buttonRow}>
+                  {previewUrl ? (
                      <TouchableOpacity
-                        style={[styles.button, { marginTop: 6 }]}
-                        onPress={() => openSpotifyLink(searchType, id)}
+                        style={[styles.button, { backgroundColor: "#4CAF50", marginTop: 6, flex: 1 }]}
+                        onPress={() => handlePlayPreview(item)}
+                        disabled={isLoading}
                      >
-                        <Image source={SPOTIFY_ICON} style={styles.spotifyIcon} />
+                        {isLoading && currentlyPlayingId === item.id ? (
+                           <ActivityIndicator color="white" size="small" />
+                        ) : isCurrentlyPlaying && isPlaying ? (
+                           <Ionicons name="pause" size={20} color="white" />
+                        ) : (
+                           <Ionicons name="play" size={20} color="white" />
+                        )}
+                        <Text style={styles.buttonText}>
+                           {isLoading && currentlyPlayingId === item.id
+                              ? "Loading..."
+                              : isCurrentlyPlaying && isPlaying
+                              ? "Pause"
+                              : "Play Preview"}
+                        </Text>
                      </TouchableOpacity>
-                  </View>
-               )}
-               {searchType !== "track" && (
+                  ) : (
+                     <TouchableOpacity
+                        style={[styles.button, { backgroundColor: "#ccc", marginTop: 6, flex: 1 }]}
+                        disabled={true}
+                     >
+                        <Text style={[styles.buttonText, { color: "#888" }]}>No Preview</Text>
+                     </TouchableOpacity>
+                  )}
                   <TouchableOpacity
-                     style={[styles.button, { marginTop: 6 }]}
+                     style={styles.spotifyButton}
                      onPress={() => openSpotifyLink(searchType, id)}
                   >
                      <Image source={SPOTIFY_ICON} style={styles.spotifyIcon} />
                   </TouchableOpacity>
-               )}
+               </View>
             </View>
          </View>
       );
@@ -568,8 +607,7 @@ export default function SearchScreen() {
                onPress={() => handleTogglePress(type)}
                accessibilityLabel={`Filter by ${type}`}
             >
-               <Ionicons name={icon} size={20} color="white" style={styles.toggleIcon} />
-               <Text style={styles.toggleText}>{type.toUpperCase()}</Text>
+               <Ionicons name={icon} size={24} color="white" style={styles.toggleIcon} />
             </TouchableOpacity>
          ))}
       </View>
@@ -664,15 +702,15 @@ const styles = StyleSheet.create({
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: 'white',
-      borderRadius: 8,
-      marginBottom: 16,
-      paddingHorizontal: 16,
+      borderRadius: 16,
+      marginBottom: 12,
+      paddingHorizontal: 20,
       height: 56,
-      elevation: 2,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.2,
-      shadowRadius: 1.41,
+      elevation: 4,
+      shadowColor: '#6200ee',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
    },
    inputIcon: {
       marginRight: 12,
@@ -686,7 +724,7 @@ const styles = StyleSheet.create({
       flexDirection: "row",
       justifyContent: "space-between",
       marginBottom: 16,
-      gap: 6,
+      gap: 12,
    },
    toggleButton: {
       flex: 1,
@@ -695,25 +733,17 @@ const styles = StyleSheet.create({
       borderRadius: 8,
       alignItems: "center",
       justifyContent: "center",
-      flexDirection: 'row',
-      elevation: 2,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.2,
-      shadowRadius: 1.41,
-      paddingHorizontal: 8,
+      elevation: 4,
+      shadowColor: '#6200ee',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
    },
    activeToggle: {
       backgroundColor: "#6200ee",
    },
    toggleIcon: {
-      marginRight: 4,
-   },
-   toggleText: {
-      color: "white",
-      fontWeight: "bold",
-      fontSize: 11,
-      letterSpacing: 0.5,
+      marginRight: 0,
    },
    searchButton: {
       padding: 8,
@@ -721,7 +751,7 @@ const styles = StyleSheet.create({
    },
    card: {
       borderRadius: 16,
-      padding: 16,
+      padding: 20,
       marginBottom: 16,
       flexDirection: "row",
       alignItems: "center",
@@ -733,6 +763,7 @@ const styles = StyleSheet.create({
       ...Platform.select({
          ios: {
             borderWidth: 1,
+            borderColor: 'rgba(98, 0, 238, 0.05)',
          }
       })
    },
@@ -740,46 +771,70 @@ const styles = StyleSheet.create({
       width: 60,
       height: 60,
       borderRadius: 12,
-      marginRight: 12,
+      marginRight: 16,
    },
    cardTextContainer: {
       flex: 1,
    },
    cardTitle: {
       fontSize: 16,
-      fontWeight: "bold",
+      fontWeight: "600",
+      marginBottom: 4,
    },
    cardSubtitle: {
       fontSize: 14,
-      marginBottom: 6,
+      marginBottom: 8,
+      opacity: 0.7,
    },
    spotifyIcon: {
       width: 32,
       height: 32,
       resizeMode: "contain",
    },
+   spotifyButton: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: 'rgba(0, 0, 0, 0.1)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      elevation: 4,
+      shadowColor: '#6200ee',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+   },
    button: {
-      padding: 8,
+      padding: 12,
       borderRadius: 16,
-      backgroundColor: "#eeeeee",
+      backgroundColor: "#6200ee",
       alignItems: "center",
       flexDirection: "row",
       justifyContent: "center",
+      elevation: 4,
+      shadowColor: '#6200ee',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      minWidth: 140,
+      minHeight: 48,
    },
    buttonRow: {
       flexDirection: "row",
       alignItems: "center",
+      gap: 12,
    },
    buttonText: {
       fontSize: 14,
-      fontWeight: "bold",
+      fontWeight: "600",
       color: "white",
-      marginLeft: 4,
+      marginLeft: 8,
+      flexShrink: 1,
    },
    emptyText: {
       textAlign: "center",
       fontSize: 16,
-      color: "#666",
+      opacity: 0.7,
       marginTop: 40,
    },
    loadingContainer: {
@@ -800,8 +855,75 @@ const styles = StyleSheet.create({
       paddingBottom: 25,
    },
    userPlaceholder: {
-      backgroundColor: '#f0f0f0',
+      backgroundColor: 'rgba(98, 0, 238, 0.1)',
       justifyContent: 'center',
       alignItems: 'center',
+   },
+   avatarText: {
+      color: "#6200ee",
+      fontSize: 24,
+      fontWeight: "bold",
+   },
+   userCard: {
+      padding: 16,
+   },
+   userImage: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      marginRight: 16,
+   },
+   userInfo: {
+      flex: 1,
+      justifyContent: 'center',
+   },
+   userButton: {
+      marginTop: 8,
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+   },
+   albumCard: {
+      padding: 16,
+   },
+   albumImage: {
+      width: 60,
+      height: 60,
+      borderRadius: 8,
+      marginRight: 16,
+   },
+   albumInfo: {
+      flex: 1,
+      justifyContent: 'center',
+   },
+   artistCard: {
+      padding: 16,
+   },
+   artistImage: {
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      marginRight: 16,
+   },
+   artistInfo: {
+      flex: 1,
+      justifyContent: 'center',
+   },
+   trackCard: {
+      padding: 16,
+   },
+   trackImage: {
+      width: 60,
+      height: 60,
+      borderRadius: 8,
+      marginRight: 16,
+   },
+   trackInfo: {
+      flex: 1,
+      justifyContent: 'center',
    },
 });
