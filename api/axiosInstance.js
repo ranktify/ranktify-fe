@@ -111,6 +111,21 @@ axiosInstance.interceptors.response.use(
       if (error.response?.status === 401 && !originalRequest._retry) {
          debugLog("401 error, attempting token refresh");
          originalRequest._retry = true;
+         originalRequest._retryCount = (originalRequest._retryCount || 0) + 1;
+
+         if (originalRequest._retryCount > 2) {
+            debugLog("Max refresh attempts reached, redirecting to login");
+            await storage.removeItem("jwt_token");
+            await storage.removeItem("refresh_token");
+            await storage.removeItem("user_info");
+
+            const currentPath = router.canGoBack() ? router.pathname : "";
+            if (currentPath !== "/login" && currentPath !== "/signup") {
+               debugLog("Redirecting to login");
+               router.replace("/login");
+            }
+            return Promise.reject(error);
+         }
 
          try {
             const refreshToken = await storage.getItem("refresh_token");
