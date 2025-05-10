@@ -35,6 +35,7 @@ export default function ProfileScreen() {
    const [friendCount, setFriendCount] = useState(0);
    const [friends, setFriends] = useState([]);
    const [rankedSongsCount, setRankedSongsCount] = useState(0);
+   const [streaks, setStreaks] = useState(0);
 
    const {
       login: loginSpotify,
@@ -90,11 +91,26 @@ export default function ProfileScreen() {
       }
    };
 
+   const fetchStreaks = async () => {
+      try {
+         if (user?.userId) {
+            const response = await axiosInstance.get('/streaks');
+            setStreaks(response.data.streaks || 0);
+         } else {
+            console.log("No user ID available");
+         }
+      } catch (error) {
+         console.log("Error fetching streaks:", error);
+         setStreaks(0);
+      }
+   };
+
    useFocusEffect(
       React.useCallback(() => {
          if (isAuthenticated && user) {
             fetchFriendCount();
             fetchRankedSongs();
+            fetchStreaks();
          }
       }, [isAuthenticated, user])
    );
@@ -259,6 +275,14 @@ export default function ProfileScreen() {
                            <View style={styles.statItem}>
                               <Text style={[styles.statNumber, { color: textColor }]}>{rankedSongsCount}</Text>
                               <Text style={[styles.statLabel, { color: textColor }]}>Ranked</Text>
+                           </View>
+                           <View style={[styles.statDivider, { backgroundColor: backgroundColor === '#fff' ? '#eee' : '#333' }]} />
+                           <View style={styles.statItem}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                                 <Ionicons name="flame" size={18} color="#FF9500" style={{ marginRight: 4 }} />
+                                 <Text style={[styles.statNumber, { color: textColor }]}>{streaks}</Text>
+                              </View>
+                              <Text style={[styles.statLabel, { color: textColor }]}>Streak</Text>
                            </View>
                         </View>
                      </View>

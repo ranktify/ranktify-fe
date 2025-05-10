@@ -9,9 +9,11 @@ import {
   Text,
   Platform,
   StatusBar,
-  LogBox
+  LogBox,
+  Image,
+  Dimensions
 } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { searchAndGetLinks } from '@/utils/spotifySearch';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import SongSwiper, { Song } from '@/components/SongSwiper';
@@ -24,22 +26,39 @@ LogBox.ignoreLogs([
   "Warning: useInsertionEffect must not schedule updates.",
 ]);
 
+const statusBarHeight = Platform.OS === "ios" ? 8 : StatusBar.currentHeight || 0;
+const SCREEN_WIDTH = Dimensions.get("window").width;
+
 export default function RankPage() {
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
+  const cardBackgroundColor = useThemeColor({}, 'secondaryBackground');
 
   const [songs, setSongs] = useState<Song[]>([]);
   const [isRankingSessionActive, setIsRankingSessionActive] = useState(false);
   const [isFetchingSongs, setIsFetchingSongs] = useState(false);
   const [friendsList, setFriendsList] = useState<any[]>([]);
+  const [streaks, setStreaks] = useState(0);
 
   useEffect(() => {
     if (!isRankingSessionActive) {
       trackImpression('rank-container-onboarding');
       trackImpression('rank-btn-start');
+      fetchStreaks();
     }
     trackImpression('rank-btn-start');
   }, [isRankingSessionActive]);
+
+  const fetchStreaks = async () => {
+    try {
+      const response = await axiosInstance.get('/streaks');
+      const streakCount = response.data.streaks || 0;
+      setStreaks(streakCount);
+    } catch (error) {
+      console.log("Error fetching streaks:", error);
+      setStreaks(0);
+    }
+  };
 
   const startRankingSession = async () => {
     setIsFetchingSongs(true);
@@ -153,23 +172,44 @@ export default function RankPage() {
           onRankingComplete={handleRankingComplete}
         />
       ) : (
-        <View style={styles.onboardingContainer}>
-          <MaterialIcons name="queue-music" size={64} color={textColor} />
-          <Text style={[styles.title, { color: textColor }]}>Ready to Rank?</Text>
-          <Text style={[styles.subtitle, { color: textColor }]}>
-            Swipe right to rank songs from 1 to 5
-          </Text>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => { trackClick('rank-btn-start'); startRankingSession(); }}
-            disabled={isFetchingSongs}
-          >
-            {isFetchingSongs ? (
-              <ActivityIndicator />
-            ) : (
-              <Text style={styles.buttonText}>Start Ranking Session</Text>
-            )}
-          </TouchableOpacity>
+        <View style={[styles.container, { backgroundColor }]}>
+          <View style={styles.header}>
+            <View style={[styles.streakContainer, { backgroundColor: cardBackgroundColor }]}>
+              <Ionicons name="flame" size={24} color="#FF9500" />
+              <Text style={[styles.streakText, { color: textColor }]}>
+                {streaks}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.content}>
+            <View style={styles.iconContainer}>
+              <MaterialIcons name="queue-music" size={80} color={textColor} />
+            </View>
+
+            <Text style={[styles.title, { color: textColor }]}>
+              Ready to Rank?
+            </Text>
+
+            <Text style={[styles.subtitle, { color: textColor }]}>
+              Swipe right to rank songs from 1 to 5
+            </Text>
+
+            <TouchableOpacity
+              style={[styles.button, { backgroundColor: '#6200ee' }]}
+              onPress={() => { 
+                trackClick('rank-btn-start'); 
+                startRankingSession(); 
+              }}
+              disabled={isFetchingSongs}
+            >
+              {isFetchingSongs ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Start Ranking Session</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </SafeAreaView>
@@ -181,20 +221,74 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
-  onboardingContainer: {
+  container: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  streakContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  streakText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
-  title: { fontSize: 24, fontWeight: 'bold', marginVertical: 16 },
-  subtitle: { fontSize: 16, textAlign: 'center', marginBottom: 32 },
-  button: {
-    backgroundColor: '#6200ee',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    elevation: 2,
+  iconContainer: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(98, 0, 238, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 32,
   },
-  buttonText: { color: '#ffffff', fontSize: 18, fontWeight: '600' },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 18,
+    textAlign: 'center',
+    marginBottom: 48,
+    opacity: 0.8,
+  },
+  button: {
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    elevation: 4,
+    shadowColor: '#6200ee',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  buttonText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
 });
