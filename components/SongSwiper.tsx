@@ -99,6 +99,7 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentRank, setCurrentRank] = useState(0);
+  const [playbackError, setPlaybackError] = useState(false);
 
   const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
   const [playlistNameSuffix, setPlaylistNameSuffix] = useState('');
@@ -152,21 +153,35 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
   const loadSound = async () => {
     try {
         setIsLoading(true);
-        if (sound) await sound.unloadAsync();
-        const { sound: newSound } = await Audio.Sound.createAsync(
-            { uri: displaySong.audioUri },
-            { shouldPlay: true },
-            onPlaybackStatusUpdate
-        );
-        setSound(newSound);
-        setIsPlaying(true);
-    } catch (error) {
-        console.error('Error loading sound', error);
-        if (error.message.includes('NSURLErrorDomain')) {
-            Alert.alert('Error', 'Failed to load audio. Please check your network connection or try again later.');
-        } else {
-            Alert.alert('Error', 'An unexpected error occurred while loading the audio.');
+        setPlaybackError(false);
+        if (sound) {
+            try {
+                await sound.unloadAsync();
+            } catch (error) {
+                console.log('Error unloading sound:', error);
+            }
         }
+        
+        if (!displaySong.audioUri) {
+            setPlaybackError(true);
+            return;
+        }
+
+        try {
+            const { sound: newSound } = await Audio.Sound.createAsync(
+                { uri: displaySong.audioUri },
+                { shouldPlay: true },
+                onPlaybackStatusUpdate
+            );
+            setSound(newSound);
+            setIsPlaying(true);
+        } catch (error) {
+            console.log('Error creating sound:', error);
+            setPlaybackError(true);
+        }
+    } catch (error) {
+        console.log('Error in loadSound:', error);
+        setPlaybackError(true);
     } finally {
         setIsLoading(false);
     }
@@ -182,7 +197,10 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
         setProgress(0);
       }
     } else if (status.error) {
-      console.error(`AUDIO ERROR: ${status.error}`);
+      console.log('Playback status error:', status.error);
+      setPlaybackError(true);
+      setIsPlaying(false);
+      setProgress(0);
     }
   };
 
@@ -194,34 +212,70 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
       }
       await sound.playAsync();
     } catch (error) {
-      console.error('Error playing sound', error);
-      Alert.alert('Error', 'Failed to play audio');
-    }
-  };
-
-  const pauseSound = async () => {
-    if (sound) await sound.pauseAsync();
-  };
-
-  const stopSound = async () => {
-    if (sound) {
-      await sound.stopAsync();
-      await sound.unloadAsync();
-      setSound(null);
+      console.log('Error playing sound:', error);
+      setPlaybackError(true);
       setIsPlaying(false);
     }
   };
 
+  const pauseSound = async () => {
+    try {
+      if (sound) await sound.pauseAsync();
+    } catch (error) {
+      console.log('Error pausing sound:', error);
+      setPlaybackError(true);
+      setIsPlaying(false);
+    }
+  };
+
+  const stopSound = async () => {
+    if (sound) {
+      try {
+        await sound.stopAsync();
+        await sound.unloadAsync();
+      } catch (error) {
+        console.log('Error stopping sound:', error);
+      } finally {
+        setSound(null);
+        setIsPlaying(false);
+      }
+    }
+  };
+
   const togglePlayback = async () => {
+    if (playbackError) return;
     if (isPlaying) await pauseSound();
     else await playSound();
   };
 
+  // Cleanup on unmount or song change
   useEffect(() => {
     return () => {
-      if (sound) sound.unloadAsync();
+      if (sound) {
+        try {
+          sound.unloadAsync();
+        } catch (error) {
+          console.log('Error unloading sound in cleanup:', error);
+        }
+      }
     };
   }, [sound]);
+
+  // Reset playback state when song changes
+  useEffect(() => {
+    if (sound) {
+      try {
+        sound.unloadAsync();
+      } catch (error) {
+        console.log('Error unloading sound on song change:', error);
+      }
+    }
+    setSound(null);
+    setIsPlaying(false);
+    setProgress(0);
+    setDuration(0);
+    setPlaybackError(false);
+  }, [displaySong]);
 
   const rotation = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
@@ -598,7 +652,7 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
           ]}
         >
           <Text style={[styles.rankLabel, { color: textColor }]}>
-            What is your ranking? {currentRank > 0 ? `${currentRank}` : ''}
+            What is your ranking?
           </Text>
           <View style={styles.rankButtons}>
             {[1, 2, 3, 4, 5].map((v) => (
@@ -641,12 +695,14 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.button, styles.playButton]}
+            style={[styles.button, styles.playButton, playbackError && styles.errorButton]}
             onPress={() => { trackClick('rank-btn-play'); handleButtonPress(); togglePlayback(); }}
-            disabled={isLoading}
+            disabled={isLoading || playbackError}
           >
             {isLoading ? (
               <Text style={styles.loadingText}>...</Text>
+            ) : playbackError ? (
+              <MaterialIcons name="error-outline" size={30} color="white" />
             ) : isPlaying ? (
               <Ionicons name="pause" size={30} color="white" />
             ) : (
@@ -875,6 +931,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     marginLeft: 12,
+  },
+  errorButton: {
+    backgroundColor: '#FF9800',
   },
 });
 
