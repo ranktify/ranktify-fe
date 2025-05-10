@@ -160,7 +160,6 @@ const styles = StyleSheet.create({
   headerContainer: {
     alignItems: 'center',
     marginBottom: 24,
-    marginTop: 16,
   },
   headerText: {
     fontSize: 24,
