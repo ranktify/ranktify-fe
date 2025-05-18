@@ -467,7 +467,7 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
             </Text>
             <View style={{ flexDirection: 'row', marginTop: 20 }}>
               <TouchableOpacity
-                style={[styles.restartButton, { backgroundColor: primaryColor, marginTop: 0 }]}
+                style={[styles.endPageButton, { backgroundColor: primaryColor, marginTop: 0 }]}
                 onPress={() => {
                   trackClick('rank-btn-restart-ranking');
                   handleButtonPress();
@@ -475,45 +475,80 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
                   onRankingComplete();
                 }}
               >
-                <Text style={styles.restartButtonText}>Rank Again</Text>
+                <Text style={styles.endPageButtonText}>Rank Again</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.restartButton, { backgroundColor: '#1DB954', marginLeft: 10, marginTop: 0 }]}
+                style={[styles.endPageButton, { backgroundColor: '#1DB954', marginLeft: 10, marginTop: 0 }]}
                 onPress={() => {
                   trackClick('rank-btn-add-playlist-spotify');
                   handleButtonPress();
                   setPlaylistModalVisible(true);
                 }}
               >
-                <Text style={styles.restartButtonText}>Add to Spotify</Text>
+                <Text style={styles.endPageButtonText}>Add to Spotify</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
         <Modal transparent visible={playlistModalVisible} animationType="fade">
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalContainer, { backgroundColor: cardBackgroundColor }]}>              
+          <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
+            <View style={[styles.modalContainer, { 
+              backgroundColor: cardBackgroundColor,
+              borderColor,
+              borderWidth: 1,
+              shadowColor: primaryColor,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.1,
+              shadowRadius: 12,
+              elevation: 8,
+            }]}>              
               <Text style={[styles.modalTitle, { color: textColor }]}>Enter playlist name:</Text>
               <TextInput
-                placeholder="My Beats"
+                placeholder="Playlist Name"
                 placeholderTextColor={secondaryColor}
                 value={playlistNameSuffix}
                 onChangeText={setPlaylistNameSuffix}
-                style={[styles.modalInput, { backgroundColor: inputBackground, borderColor, color: textColor }]}
+                style={[styles.modalInput, { 
+                  backgroundColor: inputBackground, 
+                  borderColor,
+                  color: textColor,
+                  borderWidth: 1,
+                  borderRadius: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  fontSize: 16,
+                  marginBottom: 24,
+                }]}
               />
-              <View style={styles.modalButtonRow}>
+              <View style={[styles.modalButtonRow, { gap: 12 }]}>
                 <TouchableOpacity
-                  style={styles.modalButton}
+                  style={[styles.modalButton, { 
+                    borderWidth: 1,
+                    borderColor,
+                    paddingHorizontal: 20,
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                  }]}
                   onPress={() => { 
                     trackClick('rank-btn-cancel-playlist-spotify');
                     setPlaylistModalVisible(false); 
                     setPlaylistNameSuffix(''); 
                   }}
                 >
-                  <Text style={{ color: primaryColor }}>Cancel</Text>
+                  <Text style={{ color: textColor, fontSize: 16, fontWeight: '600' }}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.modalButton, { backgroundColor: primaryColor }]}
+                  style={[styles.modalButton, { 
+                    backgroundColor: primaryColor,
+                    paddingHorizontal: 20,
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    elevation: 4,
+                    shadowColor: primaryColor,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 4,
+                  }]}
                   onPress={() => { 
                     trackClick('rank-btn-create-playlist-spotify');
                     doCreatePlaylist(playlistNameSuffix); 
@@ -521,7 +556,7 @@ const SongSwiper: React.FC<SongSwiperProps> = ({
                     setPlaylistNameSuffix(''); 
                   }}
                 >
-                  <Text style={{ color: '#fff' }}>Create</Text>
+                  <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Create</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -847,14 +882,28 @@ const styles = StyleSheet.create({
   },
   endCardText: { fontSize: 22, fontWeight: 'bold', marginTop: 16 },
   endCardSubText: { fontSize: 16, marginTop: 8 },
-  restartButton: {
-    marginTop: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 4,
-    elevation: 2,
+  endPageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    gap: 8,
+    elevation: 4,
+    shadowColor: '#6200ee',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    minWidth: 160,
+    minHeight: 48,
   },
-  restartButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+  endPageButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
   rankContainer: {
     paddingHorizontal: 20,
     marginBottom: 20,
@@ -900,37 +949,30 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContainer: {
-    width: '80%',
-    borderRadius: 16,
-    padding: 20,
-    elevation: 5,
+    width: '85%',
+    borderRadius: 20,
+    padding: 24,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   modalInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 16,
+    width: '100%',
   },
   modalButtonRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
   },
   modalButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginLeft: 12,
+    minWidth: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   errorButton: {
     backgroundColor: '#FF9800',

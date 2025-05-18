@@ -5,13 +5,14 @@ import {
    StyleSheet,
    TextInput,
    TouchableOpacity,
-   KeyboardAvoidingView,
    Platform,
    Alert,
    SafeAreaView,
    StatusBar,
    Dimensions,
    ActivityIndicator,
+   Image,
+   ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useThemeColor } from "@/hooks/useThemeColor";
@@ -99,13 +100,20 @@ const LoginScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
    return (
       <SafeAreaView style={dynamicStyles.safeArea}>
          <StatusBar barStyle={backgroundColor === "#fff" ? "dark-content" : "light-content"} />
-         <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-            keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+         <ScrollView 
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
          >
-            <View style={[styles.contentContainer, { paddingBottom: navbarHeight }]}>
+            <View style={styles.contentContainer}>
                <View style={styles.headerContainer}>
+                  <View style={styles.logoContainer}>
+                     <Image 
+                        source={require('@/assets/images/AppIcon.png')} 
+                        style={styles.logo}
+                     />
+                  </View>
                   <Text style={dynamicStyles.title}>Welcome to Ranktify</Text>
                   <Text style={dynamicStyles.subtitle}>Sign in to continue</Text>
                </View>
@@ -170,7 +178,7 @@ const LoginScreen = React.memo(({ navbarHeight = NAVBAR_HEIGHT }) => {
                   </Text>
                </TouchableOpacity>
             </View>
-         </KeyboardAvoidingView>
+         </ScrollView>
       </SafeAreaView>
    );
 });
@@ -181,40 +189,56 @@ const styles = StyleSheet.create({
    },
    contentContainer: {
       flex: 1,
-      padding: 20,
-      justifyContent: "flex-start",
+      padding: 16,
+      minHeight: '100%',
+      justifyContent: 'flex-start',
    },
    headerContainer: {
       alignItems: "center",
-      marginTop: 40,
-      marginBottom: 30,
+      marginTop: 12,
+      marginBottom: 8,
    },
    title: {
       fontSize: 28,
       fontWeight: "bold",
-      marginBottom: 8,
+      marginBottom: 4,
+      textAlign: "center",
    },
    subtitle: {
-      fontSize: 16,
+      fontSize: 18,
+      textAlign: "center",
+      marginBottom: 4,
+      opacity: 0.8,
+   },
+   logoContainer: {
+      marginBottom: 32,
+      alignItems: 'center',
+   },
+   logo: {
+      width: 120,
+      height: 120,
+      resizeMode: 'contain',
    },
    formContainer: {
       width: "100%",
       maxWidth: SCREEN_WIDTH * 0.85,
       alignSelf: "center",
+      marginTop: 8,
+      marginBottom: 16,
    },
    inputContainer: {
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: "white",
-      borderRadius: 8,
-      marginBottom: 16,
-      paddingHorizontal: 16,
+      borderRadius: 16,
+      marginBottom: 12,
+      paddingHorizontal: 20,
       height: 56,
-      elevation: 2,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.2,
-      shadowRadius: 1.41,
+      elevation: 4,
+      shadowColor: '#6200ee',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
    },
    inputIcon: {
       marginRight: 12,
@@ -226,39 +250,45 @@ const styles = StyleSheet.create({
    },
    forgotPassword: {
       alignSelf: "flex-end",
-      marginBottom: 24,
+      marginBottom: 16,
    },
    forgotPasswordText: {
       color: "#6200ee",
       fontSize: 14,
+      fontWeight: "600",
    },
    loginButton: {
       backgroundColor: "#6200ee",
-      borderRadius: 8,
+      borderRadius: 16,
       height: 56,
       justifyContent: "center",
       alignItems: "center",
-      elevation: 3,
-      shadowColor: "#000",
+      elevation: 4,
+      shadowColor: '#6200ee',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.25,
-      shadowRadius: 3.84,
+      shadowRadius: 4,
    },
    loginButtonText: {
       color: "white",
       fontSize: 16,
-      fontWeight: "bold",
+      fontWeight: "600",
    },
    signupContainer: {
-      marginTop: 20,
+      marginTop: 24,
       alignItems: "center",
    },
    signupText: {
       fontSize: 14,
+      opacity: 0.8,
    },
    signupLink: {
       color: "#6200ee",
-      fontWeight: "bold",
+      fontWeight: "600",
+   },
+   scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'flex-start',
    },
 });
 

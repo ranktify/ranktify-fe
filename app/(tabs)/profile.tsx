@@ -384,11 +384,14 @@ const styles = StyleSheet.create({
    title: {
       fontSize: 28,
       fontWeight: "bold",
-      marginBottom: 8,
+      marginBottom: 16,
+      textAlign: "center",
    },
    subtitle: {
-      fontSize: 16,
-      marginBottom: 20,
+      fontSize: 18,
+      textAlign: "center",
+      marginBottom: 48,
+      opacity: 0.8,
    },
    loadingContainer: {
       flex: 1,
@@ -400,25 +403,25 @@ const styles = StyleSheet.create({
       marginTop: 10,
    },
    section: {
-      marginBottom: 16,
+      marginBottom: 24,
    },
    userHeaderContainer: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 16,
+      marginBottom: 24,
    },
    headerUsername: {
       fontSize: 24,
       fontWeight: "bold",
    },
    profileInfo: {
-      marginBottom: 16,
+      marginBottom: 24,
    },
    avatarContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 16,
+      marginBottom: 24,
       gap: 24,
    },
    avatar: {
@@ -429,6 +432,11 @@ const styles = StyleSheet.create({
       justifyContent: "center",
       alignItems: "center",
       marginRight: 20,
+      elevation: 4,
+      shadowColor: '#6200ee',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
    },
    avatarText: {
       color: "#fff",
@@ -459,16 +467,28 @@ const styles = StyleSheet.create({
       height: 36,
    },
    sectionTitle: {
-      fontSize: 18,
+      fontSize: 20,
       fontWeight: "600",
-      marginBottom: 12,
+      marginBottom: 16,
+      textAlign: "center",
    },
    spotifySection: {
       marginBottom: 24,
    },
    spotifyCard: {
-      borderRadius: 12,
-      padding: 16,
+      borderRadius: 16,
+      padding: 20,
+      elevation: 4,
+      shadowColor: '#6200ee',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.1,
+      shadowRadius: 10,
+      ...Platform.select({
+         ios: {
+            borderWidth: 1,
+            borderColor: 'rgba(98, 0, 238, 0.05)',
+         }
+      })
    },
    spotifyInfo: {
       flexDirection: 'row',
@@ -488,11 +508,18 @@ const styles = StyleSheet.create({
    spotifyButton: {
       backgroundColor: "#1DB954",
       paddingVertical: 12,
-      borderRadius: 8,
+      paddingHorizontal: 24,
+      borderRadius: 16,
       alignItems: 'center',
+      elevation: 4,
+      shadowColor: '#1DB954',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
    },
    spotifyDisconnectButton: {
       backgroundColor: "#ff6b6b",
+      shadowColor: '#ff6b6b',
    },
    spotifyButtonText: {
       color: "#fff",
@@ -507,10 +534,15 @@ const styles = StyleSheet.create({
    },
    actionButton: {
       backgroundColor: "#6200ee",
-      paddingVertical: 12,
-      paddingHorizontal: 24,
-      borderRadius: 8,
+      paddingVertical: 16,
+      paddingHorizontal: 32,
+      borderRadius: 16,
       alignSelf: 'center',
+      elevation: 4,
+      shadowColor: '#6200ee',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
    },
    actionButtonText: {
       color: "#fff",
